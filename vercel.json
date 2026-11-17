@@ -1,0 +1,3 @@
+{
+  "ignoreCommand": "if echo \"$VERCEL_URL\" | grep -q -- '-kkkseok\\.vercel\\.app$'; then echo 'skip: legacy kkkseok Vercel account'; exit 0; else exit 1; fi"
+}
