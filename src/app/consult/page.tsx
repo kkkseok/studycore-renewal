@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useRef, useState } from "react";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -40,7 +40,23 @@ export default function ConsultPage() {
 
   const handlePhoneChange = usePhoneFormat<ConsultationFormInput>(setValue);
 
+  // GA4 폼 퍼널: 첫 입력 포커스(페이지당 1회) / 저장 실패 사유. 입력값은 보내지 않는다.
+  const formStartedRef = useRef(false);
+  const handleFormFocus = () => {
+    if (formStartedRef.current) return;
+    formStartedRef.current = true;
+    trackEvent("lead_form_start", { form_type: "consult", landing_slug: "homepage" });
+  };
+  const trackFormFail = (reason: "validation" | "rate_limit" | "server" | "network", field?: string) => {
+    trackEvent("lead_form_fail", { form_type: "consult", landing_slug: "homepage", reason, field });
+  };
+  const onInvalid = (formErrors: FieldErrors<ConsultationFormInput>) => {
+    trackFormFail("validation", Object.keys(formErrors)[0]);
+  };
+
   const onSubmit = async (data: ConsultationFormInput) => {
+    // 응답을 받았는지로 서버 오류(비JSON 500 등)와 네트워크 오류를 구분
+    let gotResponse = false;
     try {
       const response = await fetch("/api/consult", {
         method: "POST",
@@ -49,6 +65,7 @@ export default function ConsultPage() {
         },
         body: JSON.stringify(data),
       });
+      gotResponse = true;
 
       const result: ConsultationApiResponse = await response.json();
 
@@ -68,9 +85,11 @@ export default function ConsultPage() {
         success("상담 신청이 완료되었습니다!");
         reset();
       } else {
+        trackFormFail(response.status === 429 ? "rate_limit" : "server");
         showError(result.error || "상담 신청에 실패했습니다.");
       }
     } catch {
+      trackFormFail(gotResponse ? "server" : "network");
       showError("네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
     }
   };
@@ -144,7 +163,7 @@ export default function ConsultPage() {
         {/* 폼 */}
         <section className="section-sm px-6 md:px-13">
           <div className="max-w-xl mx-auto">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit, onInvalid)} onFocus={handleFormFocus} className="space-y-6">
               {/* 이름 */}
               <FormField
                 label="이름"

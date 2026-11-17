@@ -4,6 +4,7 @@ CLAUDE.md에서 분리한 기능·규칙 변경 이력. 최신 항목이 위.
 여기서 도출된 지속 규칙은 CLAUDE.md 본문(코딩 규칙)에 반영한다.
 
 <!-- 형식: YYYY-MM-DD: 변경 내용 (사유) -->
+- 2026-11-17: GA4 폼 퍼널 이벤트 추가 — `lead_form_start`(첫 입력 포커스, 페이지당 1회), `lead_form_fail`(reason: validation·rate_limit·server·network, 상담 폼은 검증 실패 필드명 포함). 랜딩은 게이트웨이가 처리하며 업로드 HTML 자체 검증 실패는 미기록 (상담 폼 이탈 지점 파악)
 - 2026-11-17: GA4(gtag.js 직접, GTM 미사용) 설치 — `GoogleAnalytics.tsx`(루트 레이아웃, `/admin` 제외)·랜딩 게이트웨이 주입, `generate_lead`(상담·랜딩 저장 성공 후)·`contact_click`(전화·카카오)·`consult_cta_click`, CTA 섹션에 `data-track-location`, CSP에 Google 태그 도메인 추가 (윈터 광고 전 유입·전환 측정 시작)
 - 2026-11-17: 홈 신뢰 지표(`TrustStrip`) "애플타워 10층 전층" → "애플타워 10층" (사실 정정: 전층이 아니라 10층에 위치). 광고 소재·윈터 랜딩·마케팅 컨텍스트 문서도 동일 정정
 - 2026-11-17: 윈터 랜딩 광고별 첫 화면에 `academy`(P6, 학원 병행) 추가 → 시간표 구역(`#sec-routine`)으로 연결 (경쟁 조사: 수완 윈터 광고가 강의형 학원뿐이라 "학원과 병행 가능" 포지션 소재 추가)

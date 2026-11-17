@@ -21,7 +21,9 @@ import { getLandingForServe } from "@/domains/landing/service";
  *     서버(/api/webhook/lead)가 응답으로 내려준 eventId를 픽셀 Lead의 eventID로
  *     써서 서버 CAPI 이벤트와 중복 제거한다. URL의 utm_* 파라미터·fbclid도 캡처해 함께 전송.
  *  5) GA4: NEXT_PUBLIC_GA_MEASUREMENT_ID가 있으면 gtag.js를 로드(config가 page_view 전송)하고,
- *     리드 성공 시 generate_lead, 전화·카카오톡 채널 링크 클릭 시 contact_click을 보낸다.
+ *     리드 성공 시 generate_lead, 전화·카카오톡 채널 링크 클릭 시 contact_click,
+ *     폼 첫 입력 포커스 시 lead_form_start, 리드 저장 실패 시 lead_form_fail(server·rate_limit·network)을 보낸다.
+ *     업로드 HTML 자체의 입력 검증 실패(alert 등)는 게이트웨이가 알 수 없어 기록되지 않는다.
  *     이름·전화번호 등 개인정보는 GA4로 보내지 않는다(학년 선택값만).
  *
  * 활성(is_active=true) slug만 서빙, 없으면 404.
@@ -87,6 +89,7 @@ if(PIXEL){!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMeth
 // GA4 (GA 설정 시에만). config가 page_view를 보낸다. 개인정보는 보내지 않는다.
 if(GA){window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){window.dataLayer.push(arguments)};window.gtag("js",new Date());window.gtag("config",GA);var gs=document.createElement("script");gs.async=true;gs.src="https://www.googletagmanager.com/gtag/js?id="+encodeURIComponent(GA);document.head.appendChild(gs);}
 function ga(n,p){if(GA&&window.gtag){try{window.gtag("event",n,p)}catch(e){}}}
+function leadFail(reason){ga("lead_form_fail",{form_type:"landing",landing_slug:SLUG,reason:reason})}
 function gradeOf(p){var g=p&&p.custom_data&&p.custom_data.grade;return(typeof g==="string"&&g.length<=20)?g:undefined}
 // URL 추적 파라미터 캡처(도착 시 1회). 픽셀이 fbclid로 _fbc 쿠키를 생성하지만, 어드민 utm 기록을 위해 직접도 보관.
 var UP=new URLSearchParams(location.search);function up(k){return UP.get(k)||null}
@@ -117,7 +120,7 @@ if(_f){window.fetch=function(u,o){
       if(p.utm_source==null)p.utm_source=TRACK.utm_source;if(p.utm_medium==null)p.utm_medium=TRACK.utm_medium;if(p.utm_campaign==null)p.utm_campaign=TRACK.utm_campaign;if(p.utm_content==null)p.utm_content=TRACK.utm_content;if(p.utm_term==null)p.utm_term=TRACK.utm_term;
       p.custom_data=p.custom_data||{};if(p.custom_data.fbclid==null)p.custom_data.fbclid=TRACK.fbclid;
       o.body=JSON.stringify(p)}catch(e){}
-    return _f(u,o).then(function(r){if(r.ok)fireLeadFromResponse(r,p);if(!r.ok&&r.status>=500&&p)enq(p);return r}).catch(function(e){if(p)enq(p);throw e});
+    return _f(u,o).then(function(r){if(r.ok)fireLeadFromResponse(r,p);else leadFail(r.status===429?"rate_limit":"server");if(!r.ok&&r.status>=500&&p)enq(p);return r}).catch(function(e){leadFail("network");if(p)enq(p);throw e});
   }
   return _f(u,o);
 };}
@@ -138,6 +141,9 @@ document.addEventListener("submit",function(e){
 // GA4 연락 클릭: 전화·카카오톡 채널 링크 (위치는 data-track-location 조상, 없으면 landing)
 document.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("a[href]"):null;if(!a)return;var h=a.getAttribute("href")||"";var c=a.closest("[data-track-location]");var l=c?c.getAttribute("data-track-location"):"landing";
   if(h.indexOf("tel:")===0)ga("contact_click",{method:"phone",location:l,landing_slug:SLUG});else if(h.indexOf("pf.kakao.com")>=0)ga("contact_click",{method:"kakao",location:l,landing_slug:SLUG})},true);
+// GA4 폼 시작: 폼 안의 입력 요소에 처음 포커스할 때 1회
+var formStarted=false;
+document.addEventListener("focusin",function(e){if(formStarted)return;var t=e.target;if(!t||!t.closest||!t.closest("form"))return;var tn=t.tagName;if(tn!=="INPUT"&&tn!=="SELECT"&&tn!=="TEXTAREA")return;formStarted=true;ga("lead_form_start",{form_type:"landing",landing_slug:SLUG})},true);
 window.addEventListener("online",flush);
 if(document.readyState==="loading")window.addEventListener("DOMContentLoaded",flush);else flush();
 })();</script>`;
