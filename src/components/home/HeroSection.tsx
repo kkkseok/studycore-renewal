@@ -5,23 +5,6 @@ import { motion } from "framer-motion";
 import { ROUTES, CONTACT } from "@/lib/constants";
 
 /* ── 애니메이션 variants ── */
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.22, delayChildren: 0.3 },
-  },
-};
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 80, damping: 18 },
-  },
-};
-
 const sloganStagger = {
   hidden: { opacity: 0 },
   show: {
@@ -82,13 +65,11 @@ export function HeroSection() {
         </motion.div>
 
         {/* 메인 헤드라인 */}
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="show"
-        >
+        {/* 애니메이션 없이 서버 HTML부터 바로 보이게 둔다 — 모바일 LCP(가장 큰 콘텐츠) 요소라
+            opacity:0 등장 애니메이션을 걸면 JS 로드 후에야 표시되어 LCP가 수 초 늦어짐 */}
+        <div>
           {/* H1 = 지역·업종 키워드(상단 줄) + 브랜드명. 검색엔진이 업종을 읽도록 한 h1 안에 둔다 */}
-          <motion.h1 variants={fadeUp}>
+          <h1>
             <span className="block font-serif text-fluid-h3 font-medium text-white/60 tracking-heading leading-ui mb-2 md:mb-3">
               광주 수완지구 관리형 독서실
             </span>
@@ -100,8 +81,8 @@ export function HeroSection() {
                 1.0
               </span>
             </span>
-          </motion.h1>
-        </motion.div>
+          </h1>
+        </div>
 
         {/* 슬로건 3줄 */}
         <motion.ul

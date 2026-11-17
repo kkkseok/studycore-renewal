@@ -26,9 +26,14 @@ function dismissToday(popupId: string) {
   localStorage.setItem(key, today);
 }
 
+// 모바일에서는 첫 화면을 가리는 전면 팝업 대신 하단 배너로 알린다
+// (구글 모바일 전면 팝업 감점 + 레이아웃 이동(CLS) 방지). 배너를 누르면 같은 팝업이 열린다.
+const MOBILE_QUERY = "(max-width: 767px)";
+
 export function PopupModal() {
   const [popup, setPopup] = useState<Popup | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [showBanner, setShowBanner] = useState(false);
   const [attachments, setAttachments] = useState<NoticeAttachment[]>([]);
   const [noticeHtml, setNoticeHtml] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -39,24 +44,30 @@ export function PopupModal() {
       const supabase = createBrowserClient();
       const popups = await getActivePopups(supabase);
       const visible = popups.find((p) => !isDismissedToday(p.id));
-      if (visible) {
-        setPopup(visible);
-        setIsOpen(true);
-        if (visible.notice_id) {
-          // 공지 연결 시 원본 HTML + 첨부파일 로드
-          const [atts, { data: notice }] = await Promise.all([
-            getNoticeAttachments(supabase, visible.notice_id),
-            supabase
-              .from("notices")
-              .select("content")
-              .eq("id", visible.notice_id)
-              .single(),
-          ]);
-          setAttachments(atts);
-          if (notice?.content) {
-            setNoticeHtml(notice.content);
-          }
+      if (!visible) return;
+
+      // 공지 연결 시 원본 HTML + 첨부파일을 먼저 다 불러온 뒤 연다.
+      // 열린 뒤에 본문이 바뀌면 팝업 크기가 커지며 내용이 밀린다(CLS).
+      if (visible.notice_id) {
+        const [atts, { data: notice }] = await Promise.all([
+          getNoticeAttachments(supabase, visible.notice_id),
+          supabase
+            .from("notices")
+            .select("content")
+            .eq("id", visible.notice_id)
+            .single(),
+        ]);
+        setAttachments(atts);
+        if (notice?.content) {
+          setNoticeHtml(notice.content);
         }
+      }
+
+      setPopup(visible);
+      if (window.matchMedia(MOBILE_QUERY).matches) {
+        setShowBanner(true);
+      } else {
+        setIsOpen(true);
       }
     }
     loadPopup();
@@ -67,6 +78,12 @@ export function PopupModal() {
   const handleDismissToday = () => {
     if (popup) dismissToday(popup.id);
     setIsOpen(false);
+    setShowBanner(false);
+  };
+
+  const openFromBanner = () => {
+    setShowBanner(false);
+    setIsOpen(true);
   };
 
   const linkUrl = popup?.notice_id
@@ -77,6 +94,37 @@ export function PopupModal() {
 
   return (
     <>
+    {/* 배너 높이만큼 페이지 끝 여백 — 고정 배너가 푸터 마지막 줄을 가리지 않게.
+        Footer 뒤에 렌더되므로 위쪽 콘텐츠를 밀지 않는다(CLS 없음) */}
+    {showBanner && popup && <div aria-hidden="true" className="h-16" />}
+    {/* 모바일 하단 공지 배너 (본문을 가리지 않음) */}
+    {showBanner && popup && (
+      <div
+        role="region"
+        aria-label="공지"
+        className="fixed inset-x-0 bottom-0 z-[9997] flex items-center gap-3 border-t border-teal/40 bg-navy px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-white"
+      >
+        <button
+          type="button"
+          onClick={openFromBanner}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left cursor-pointer"
+        >
+          <span className="shrink-0 text-caption font-medium tracking-label text-teal">
+            공지
+          </span>
+          <span className="truncate text-secondary font-medium">{popup.title}</span>
+          <ArrowRight className="h-3.5 w-3.5 shrink-0 text-teal" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowBanner(false)}
+          aria-label="공지 배너 닫기"
+          className="flex h-8 w-8 shrink-0 items-center justify-center text-white/60 hover:text-white transition-colors duration-200 cursor-pointer"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    )}
     <AnimatePresence>
       {isOpen && popup && (
         <motion.div
