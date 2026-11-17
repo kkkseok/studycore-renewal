@@ -3,7 +3,16 @@
 import { usePathname } from "next/navigation";
 import Script from "next/script";
 import { useEffect, useInsertionEffect } from "react";
-import { GA_MEASUREMENT_ID, trackLinkClick } from "@/lib/analytics";
+import {
+  GA_DISABLE_KEY,
+  GA_INTERNAL_FLAG_KEY,
+  GA_MEASUREMENT_ID,
+  isInternalBrowser,
+  setAnalyticsDisabled,
+  setAnalyticsUser,
+  trackLinkClick,
+} from "@/lib/analytics";
+import { useUserStore } from "@/stores/useUserStore";
 
 const isAdminPath = (pathname: string | null) => pathname?.startsWith("/admin") ?? false;
 
@@ -16,17 +25,26 @@ const isAdminPath = (pathname: string | null) => pathname?.startsWith("/admin") 
  *   이동하면 `ga-disable-<ID>` 플래그로 전송을 끈다.
  * - 클릭 추적: 문서 전체 위임 리스너 1개로 전화·카카오톡 채널·상담 링크 클릭을 기록.
  *   위치는 가장 가까운 `data-track-location` 조상 값(없으면 pathname).
+ * - 사용자 구분: 로그인 상태 확정 후 user_type(guest·student) 설정. 스태프가 로그인한 브라우저는
+ *   localStorage 표시 후 GA 전송을 끈다(lib/analytics.ts GA_INTERNAL_FLAG_KEY 참고).
  */
 export function GoogleAnalytics() {
   const pathname = usePathname();
   const isAdmin = isAdminPath(pathname);
+  const role = useUserStore((s) => s.role);
+  const isAuthLoading = useUserStore((s) => s.isLoading);
 
   // Next 라우터의 history.pushState(부모의 insertion effect)보다 먼저 실행되어야
   // 향상된 측정이 어드민 경로의 page_view를 보내기 전에 플래그가 켜진다.
   useInsertionEffect(() => {
     if (!GA_MEASUREMENT_ID) return;
-    (window as unknown as Record<string, boolean>)[`ga-disable-${GA_MEASUREMENT_ID}`] = isAdmin;
+    setAnalyticsDisabled(isAdmin || isInternalBrowser());
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (isAuthLoading) return;
+    setAnalyticsUser(role);
+  }, [role, isAuthLoading]);
 
   useEffect(() => {
     if (!GA_MEASUREMENT_ID) return;
@@ -43,7 +61,8 @@ export function GoogleAnalytics() {
   // 공개 페이지로 돌아오면 next/script가 id로 중복 실행을 막는다.
   if (!GA_MEASUREMENT_ID || isAdmin) return null;
 
-  const initScript = `window.dataLayer=window.dataLayer||[];window.gtag=function(){window.dataLayer.push(arguments);};window.gtag('js',new Date());window.gtag('config','${GA_MEASUREMENT_ID}');`;
+  // 스태프 브라우저는 config(첫 page_view) 전에 전송을 끈다.
+  const initScript = `window.dataLayer=window.dataLayer||[];window.gtag=function(){window.dataLayer.push(arguments);};window.gtag('js',new Date());try{if(localStorage.getItem('${GA_INTERNAL_FLAG_KEY}')==='1')window['${GA_DISABLE_KEY}']=true;}catch(e){}window.gtag('config','${GA_MEASUREMENT_ID}');`;
 
   return (
     <>

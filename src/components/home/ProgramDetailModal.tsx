@@ -10,6 +10,7 @@ import { getProgramAttachments } from "@/domains/program/service";
 import { MetaAttachmentList, AttachmentModal } from "@/components/common";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { trackEvent } from "@/lib/analytics";
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "";
@@ -32,6 +33,12 @@ export function ProgramDetailModal({
   const focusTrapRef = useFocusTrap(!!program);
   const [attachments, setAttachments] = useState<ProgramAttachment[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // GA4: 프로그램 상세 열람 (모달이 열릴 때마다 1회)
+  const programTitle = program?.title;
+  useEffect(() => {
+    if (programTitle) trackEvent("program_view", { program_name: programTitle });
+  }, [programTitle]);
 
   // 첨부파일 로드
   useEffect(() => {

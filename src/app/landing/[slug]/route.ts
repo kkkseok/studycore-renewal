@@ -25,6 +25,7 @@ import { getLandingForServe } from "@/domains/landing/service";
  *     폼 첫 입력 포커스 시 lead_form_start, 리드 저장 실패 시 lead_form_fail(server·rate_limit·network)을 보낸다.
  *     업로드 HTML 자체의 입력 검증 실패(alert 등)는 게이트웨이가 알 수 없어 기록되지 않는다.
  *     이름·전화번호 등 개인정보는 GA4로 보내지 않는다(학년 선택값만).
+ *     스태프가 로그인한 브라우저(localStorage sc_ga_internal=1, lib/analytics.ts)는 GA 전송을 끈다.
  *
  * 활성(is_active=true) slug만 서빙, 없으면 404.
  * CSP(script-src/style-src 'unsafe-inline')가 인라인 스크립트를 허용하며,
@@ -87,7 +88,7 @@ window.__LP_DATA__={clinicId:"studycore_1_0",landingPageId:SLUG};
 // Meta Pixel 초기화 (PIXEL 설정 시에만). PageView는 아래에서 event_id와 함께 발사한다.
 if(PIXEL){!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");window.fbq("init",PIXEL);}
 // GA4 (GA 설정 시에만). config가 page_view를 보낸다. 개인정보는 보내지 않는다.
-if(GA){window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){window.dataLayer.push(arguments)};window.gtag("js",new Date());window.gtag("config",GA);var gs=document.createElement("script");gs.async=true;gs.src="https://www.googletagmanager.com/gtag/js?id="+encodeURIComponent(GA);document.head.appendChild(gs);}
+if(GA){window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){window.dataLayer.push(arguments)};window.gtag("js",new Date());try{if(localStorage.getItem("sc_ga_internal")==="1")window["ga-disable-"+GA]=true}catch(e){}window.gtag("config",GA);var gs=document.createElement("script");gs.async=true;gs.src="https://www.googletagmanager.com/gtag/js?id="+encodeURIComponent(GA);document.head.appendChild(gs);}
 function ga(n,p){if(GA&&window.gtag){try{window.gtag("event",n,p)}catch(e){}}}
 function leadFail(reason){ga("lead_form_fail",{form_type:"landing",landing_slug:SLUG,reason:reason})}
 function gradeOf(p){var g=p&&p.custom_data&&p.custom_data.grade;return(typeof g==="string"&&g.length<=20)?g:undefined}
