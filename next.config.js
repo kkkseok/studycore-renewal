@@ -16,6 +16,7 @@ const withPWA = require("next-pwa")({
  * - Meta Pixel: connect.facebook.net (script), www.facebook.com (img/frame)
  * - Kakao Maps: dapi.kakao.com (script), t1.daumcdn.net (asset)
  * - Google Maps 임베드 (홈 CTA 지도 iframe): maps.google.com → www.google.com/maps/embed 리다이렉트 (frame)
+ * - 광고 랜딩(/landing/[slug]) Pretendard 웹폰트: cdn.jsdelivr.net (style + font 파일만, script는 허용 안 함)
  * - Unsplash 데모 이미지: images.unsplash.com
  *
  * 위반 발견 시 buildContentSecurityPolicy()의 해당 directive에 도메인 추가.
@@ -36,7 +37,7 @@ function buildContentSecurityPolicy() {
     ]
       .filter(Boolean)
       .join(" "),
-    "style-src 'self' 'unsafe-inline' https://t1.daumcdn.net",
+    "style-src 'self' 'unsafe-inline' https://t1.daumcdn.net https://cdn.jsdelivr.net",
     [
       "img-src",
       "'self'",
@@ -49,7 +50,7 @@ function buildContentSecurityPolicy() {
       "https://*.daumcdn.net",
       "https://t1.daumcdn.net",
     ].join(" "),
-    "font-src 'self' data:",
+    "font-src 'self' data: https://cdn.jsdelivr.net",
     [
       "connect-src",
       "'self'",
