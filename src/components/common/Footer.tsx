@@ -4,7 +4,7 @@ import { CONTACT, ROUTES } from "@/lib/constants";
 
 export function Footer() {
   return (
-    <footer className="bg-navy-dark px-6 md:px-13 py-13 border-t border-teal/10">
+    <footer data-track-location="footer" className="bg-navy-dark px-6 md:px-13 py-13 border-t border-teal/10">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
         {/* 브랜드 */}
         <div className="text-center md:text-left">

@@ -66,6 +66,7 @@ e2e/                   E2E 테스트 (Playwright) — helpers, fixtures, tests/{
 | 필수 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL` | 앱 동작 불가 |
 | 필수 | `STAFF_AUTH_FIXED_PASSWORD` | `staff-auth-config.ts`가 throw → 스태프 로그인·스태프 생성 API 실패 (fallback 없음) |
 | 선택 | `NEXT_PUBLIC_META_PIXEL_ID`, `META_CAPI_ACCESS_TOKEN`, `META_CAPI_TEST_EVENT_CODE` | Meta 픽셀·CAPI 전송 skip |
+| 선택 | `NEXT_PUBLIC_GA_MEASUREMENT_ID` | GA4 미로드 (`GoogleAnalytics.tsx`, 랜딩 게이트웨이). `/admin`에서는 항상 미로드 |
 | 선택 | `NEXT_PUBLIC_KAKAO_MAP_API_KEY` | 소개 페이지 카카오 지도(`LocationSection`) 미표시 |
 | 미사용 | `REVALIDATE_SECRET` | `.env.example`·`.env.local`에 있으나 현재 코드에서 참조 없음 |
 | E2E | `.env.test`의 `TEST_{ADMIN,MENTOR,ASSISTANT}_{USERNAME,PASSWORD}` | 인증 E2E 실패 |
@@ -127,6 +128,7 @@ e2e/                   E2E 테스트 (Playwright) — helpers, fixtures, tests/{
 - canonical은 각 리프 `page.tsx`의 `metadata.alternates.canonical`에 둔다. 루트 `layout.tsx`에 두면 canonical 없는 하위 페이지가 `/`를 상속해 홈 중복으로 처리됨
 - 공개 페이지 추가 시 `src/app/sitemap.ts`에 등록
 - 상담·리드 API에서 알림톡/SMS·Meta CAPI 전송은 `after()`(next/server)로 응답 후 실행 (`submitConsultation(.., { deferNotify: true })` + `notifyConsultationCreated()`). 응답이 기다리는 것은 rate limit + DB 저장뿐
+- GA4 이벤트는 `lib/analytics.ts`의 `trackEvent()`로 보낸다. 리드는 저장 성공 응답 후 `generate_lead`(Meta Lead 발사 위치와 같은 곳). 전화·카카오톡·상담 링크 클릭은 `GoogleAnalytics.tsx`의 위임 리스너가 가장 가까운 `data-track-location` 조상 값으로 기록하므로, 새 CTA 섹션에는 이 속성을 단다. 이름·전화번호·학교명·문의 내용은 GA4로 보내지 않는다. 이벤트 설계는 Drive `10_projects/studycore-renewal/analytics/ga4-tracking-plan.md`
 - Meta 픽셀↔CAPI 중복 제거용 id: **PageView**는 클라이언트가 `crypto.randomUUID()`로 생성해 픽셀 발사 + `/api/meta/pageview`로 전달 (랜딩 HTML이 CDN 캐시되므로 서버 주입 시 전 방문자가 같은 id를 공유하게 됨). **Lead**는 서버(`/api/consult`·`/api/webhook/lead`)가 생성해 응답으로 내려준 eventId를 픽셀이 재사용
 - `/landing/[slug]`는 `s-maxage=60, stale-while-revalidate` CDN 캐싱. 쿠키를 쓰는 서버 클라이언트 대신 쿠키 비의존 anon 클라이언트(`@supabase/supabase-js`)를 써야 캐싱이 유지됨 (RLS `landing_public_read`). 어드민 수정은 최대 ~60초 후 반영
 - 랜딩 리드의 유입 구분: 게이트웨이가 업로드된 HTML에 스크립트(`__LP_DATA__`)를 주입하고, 이 스크립트가 `/api/webhook/lead` 요청 body의 `landing_page_id`를 slug로 덮어씀 → `consultations.source`에 slug 기록 (기본 상담폼은 `homepage`). 업로드 HTML 자체는 slug를 몰라도 됨

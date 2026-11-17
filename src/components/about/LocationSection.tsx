@@ -122,7 +122,7 @@ export function LocationSection() {
   const hasApiKey = !!KAKAO.MAP_API_KEY;
 
   return (
-    <section className="section-md bg-stone">
+    <section data-track-location="about-location" className="section-md bg-stone">
       <div className="max-w-6xl mx-auto px-6">
         {/* 헤더 */}
         <motion.div

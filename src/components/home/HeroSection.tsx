@@ -24,7 +24,7 @@ const sloganLine = {
 
 export function HeroSection() {
   return (
-    <section className="min-h-screen bg-navy-dark relative overflow-hidden flex flex-col">
+    <section data-track-location="hero" className="min-h-screen bg-navy-dark relative overflow-hidden flex flex-col">
       {/* 격자 배경 */}
       <div className="absolute inset-0 pointer-events-none z-[1] bg-grid-teal" />
 

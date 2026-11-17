@@ -14,6 +14,7 @@ const withPWA = require("next-pwa")({
  * 외부 도메인 화이트리스트
  * - Supabase Storage·Realtime: *.supabase.co / *.supabase.in
  * - Meta Pixel: connect.facebook.net (script), www.facebook.com (img/frame)
+ * - GA4 (gtag.js): *.googletagmanager.com (script/img/connect), *.google-analytics.com·*.analytics.google.com (img/connect)
  * - Kakao Maps: dapi.kakao.com (script), t1.daumcdn.net (asset)
  * - Google Maps 임베드 (홈 CTA 지도 iframe): maps.google.com → www.google.com/maps/embed 리다이렉트 (frame)
  * - 광고 랜딩(/landing/[slug]) Pretendard 웹폰트: cdn.jsdelivr.net (style + font 파일만, script는 허용 안 함)
@@ -34,6 +35,7 @@ function buildContentSecurityPolicy() {
       "https://connect.facebook.net",
       "https://dapi.kakao.com",
       "https://t1.daumcdn.net",
+      "https://*.googletagmanager.com",
     ]
       .filter(Boolean)
       .join(" "),
@@ -49,6 +51,8 @@ function buildContentSecurityPolicy() {
       "https://www.facebook.com",
       "https://*.daumcdn.net",
       "https://t1.daumcdn.net",
+      "https://*.google-analytics.com",
+      "https://*.googletagmanager.com",
     ].join(" "),
     "font-src 'self' data: https://cdn.jsdelivr.net",
     [
@@ -60,6 +64,9 @@ function buildContentSecurityPolicy() {
       "https://www.facebook.com",
       "https://connect.facebook.net",
       "https://dapi.kakao.com",
+      "https://*.google-analytics.com",
+      "https://*.analytics.google.com",
+      "https://*.googletagmanager.com",
     ].join(" "),
     "worker-src 'self' blob:",
     "frame-src 'self' https://www.facebook.com https://maps.google.com https://www.google.com",

@@ -88,7 +88,7 @@ export function ProgramsSection() {
   );
 
   return (
-    <section className="bg-navy-dark section-lg relative overflow-hidden">
+    <section data-track-location="programs" className="bg-navy-dark section-lg relative overflow-hidden">
       {/* 격자 배경 */}
       <div className="absolute inset-0 pointer-events-none bg-grid-teal" />
 

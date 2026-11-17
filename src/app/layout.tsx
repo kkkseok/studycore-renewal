@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Serif_KR, Noto_Sans_KR, IBM_Plex_Mono } from "next/font/google";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { MetaPixel } from "@/components/MetaPixel";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
@@ -128,6 +129,7 @@ export default function RootLayout({
           본문으로 건너뛰기
         </a>
         <MetaPixel />
+        <GoogleAnalytics />
         <Providers><div id="main-content" className="flex flex-col flex-1">{children}</div></Providers>
       </body>
     </html>

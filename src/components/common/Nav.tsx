@@ -96,6 +96,7 @@ export function Nav() {
   return (
     <>
       <nav
+        data-track-location="nav"
         className={`fixed top-0 left-0 right-0 z-[300] px-6 md:px-13 flex items-center justify-between transition-all duration-300 ${isDarkText
           ? "bg-white border-b border-rule"
           : "bg-transparent"

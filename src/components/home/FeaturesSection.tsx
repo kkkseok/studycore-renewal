@@ -90,7 +90,7 @@ export function FeaturesSection() {
   };
 
   return (
-    <section id="features" className="bg-stone section-lg">
+    <section id="features" data-track-location="features" className="bg-stone section-lg">
       <div className="section-container">
         {/* 헤더 */}
         <motion.div

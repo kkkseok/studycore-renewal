@@ -73,6 +73,7 @@ export function ProgramDetailModal({
       {program && (
         <div
           ref={focusTrapRef}
+          data-track-location="program-modal"
           role="dialog"
           aria-modal="true"
           aria-labelledby="program-modal-title"

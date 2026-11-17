@@ -809,7 +809,7 @@ function OperationSection() {
    ══════════════════════════════════════════ */
 function CTASection() {
   return (
-    <section className="bg-navy-dark section-lg px-6 md:px-13 relative overflow-hidden">
+    <section data-track-location="system-page" className="bg-navy-dark section-lg px-6 md:px-13 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none z-[1] bg-grid-teal" />
 
       <motion.div

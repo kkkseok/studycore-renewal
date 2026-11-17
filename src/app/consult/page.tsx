@@ -16,6 +16,7 @@ import { CONTACT, CONSULT_TYPES, ROUTES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { CheckCircle } from "lucide-react";
 import { usePhoneFormat } from "@/hooks/usePhoneFormat";
+import { trackEvent } from "@/lib/analytics";
 
 export default function ConsultPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -56,6 +57,13 @@ export default function ConsultPage() {
         if (typeof window !== "undefined" && window.fbq) {
           window.fbq("track", "Lead", {}, { eventID: result.eventId });
         }
+        // GA4 리드 — 저장 성공 응답 이후에만 (개인정보 파라미터 금지)
+        trackEvent("generate_lead", {
+          form_type: "consult",
+          landing_slug: "homepage",
+          consult_type: data.consultType,
+          lead_id: result.eventId,
+        });
         setIsSubmitted(true);
         success("상담 신청이 완료되었습니다!");
         reset();

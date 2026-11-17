@@ -20,10 +20,13 @@ import { getLandingForServe } from "@/domains/landing/service";
  *     (PageView)하고, 리드 전송 성공 시 fbq('track','Lead')를 발사한다.
  *     서버(/api/webhook/lead)가 응답으로 내려준 eventId를 픽셀 Lead의 eventID로
  *     써서 서버 CAPI 이벤트와 중복 제거한다. URL의 utm_* 파라미터·fbclid도 캡처해 함께 전송.
+ *  5) GA4: NEXT_PUBLIC_GA_MEASUREMENT_ID가 있으면 gtag.js를 로드(config가 page_view 전송)하고,
+ *     리드 성공 시 generate_lead, 전화·카카오톡 채널 링크 클릭 시 contact_click을 보낸다.
+ *     이름·전화번호 등 개인정보는 GA4로 보내지 않는다(학년 선택값만).
  *
  * 활성(is_active=true) slug만 서빙, 없으면 404.
  * CSP(script-src/style-src 'unsafe-inline')가 인라인 스크립트를 허용하며,
- * connect.facebook.net(script)·www.facebook.com(img)은 next.config.js에 화이트리스트됨.
+ * connect.facebook.net(script)·www.facebook.com(img)·GA4 도메인은 next.config.js에 화이트리스트됨.
  *
  * 성능: 같은 slug의 HTML은 방문자와 무관하게 동일하므로(utm/fbclid는 게이트웨이가
  * 클라이언트에서 location.search로 캡처) CDN 엣지 캐싱이 안전하다. 쿠키 의존
@@ -50,7 +53,11 @@ export async function GET(
     });
   }
 
-  const gateway = buildGatewayScript(slug, process.env.NEXT_PUBLIC_META_PIXEL_ID);
+  const gateway = buildGatewayScript(
+    slug,
+    process.env.NEXT_PUBLIC_META_PIXEL_ID,
+    process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
+  );
   const html = landing.html_content.includes("</head>")
     ? landing.html_content.replace("</head>", `${gateway}</head>`)
     : `${gateway}${landing.html_content}`;
@@ -67,15 +74,20 @@ export async function GET(
 }
 
 /** 업로드 HTML에 주입되는 리드 게이트웨이(인라인 IIFE) */
-function buildGatewayScript(slug: string, pixelId?: string): string {
+function buildGatewayScript(slug: string, pixelId?: string, gaId?: string): string {
   const SLUG = JSON.stringify(slug);
   const PIXEL = pixelId ? JSON.stringify(pixelId) : "null";
+  const GA = gaId ? JSON.stringify(gaId) : "null";
   // 주의: 이 문자열은 브라우저에서 실행되는 바닐라 JS다. 백틱/한글 따옴표 사용 금지.
   return `<script>(function(){
-var SLUG=${SLUG},PIXEL=${PIXEL},EP="/api/webhook/lead",PV="/api/meta/pageview",QK="lead_queue_v1";
+var SLUG=${SLUG},PIXEL=${PIXEL},GA=${GA},EP="/api/webhook/lead",PV="/api/meta/pageview",QK="lead_queue_v1";
 window.__LP_DATA__={clinicId:"studycore_1_0",landingPageId:SLUG};
 // Meta Pixel 초기화 (PIXEL 설정 시에만). PageView는 아래에서 event_id와 함께 발사한다.
 if(PIXEL){!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version="2.0";n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");window.fbq("init",PIXEL);}
+// GA4 (GA 설정 시에만). config가 page_view를 보낸다. 개인정보는 보내지 않는다.
+if(GA){window.dataLayer=window.dataLayer||[];window.gtag=window.gtag||function(){window.dataLayer.push(arguments)};window.gtag("js",new Date());window.gtag("config",GA);var gs=document.createElement("script");gs.async=true;gs.src="https://www.googletagmanager.com/gtag/js?id="+encodeURIComponent(GA);document.head.appendChild(gs);}
+function ga(n,p){if(GA&&window.gtag){try{window.gtag("event",n,p)}catch(e){}}}
+function gradeOf(p){var g=p&&p.custom_data&&p.custom_data.grade;return(typeof g==="string"&&g.length<=20)?g:undefined}
 // URL 추적 파라미터 캡처(도착 시 1회). 픽셀이 fbclid로 _fbc 쿠키를 생성하지만, 어드민 utm 기록을 위해 직접도 보관.
 var UP=new URLSearchParams(location.search);function up(k){return UP.get(k)||null}
 var TRACK={utm_source:up("utm_source"),utm_medium:up("utm_medium"),utm_campaign:up("utm_campaign"),utm_content:up("utm_content"),utm_term:up("utm_term"),fbclid:up("fbclid")};
@@ -83,8 +95,8 @@ function lq(){try{return JSON.parse(localStorage.getItem(QK)||"[]")}catch(e){ret
 function sq(q){try{localStorage.setItem(QK,JSON.stringify(q))}catch(e){}}
 function enq(p){var q=lq();if(q.length>50)q.shift();q.push({k:Date.now()+"."+Math.random().toString(36).slice(2),p:p});sq(q)}
 function deq(k){sq(lq().filter(function(x){return x.k!==k}))}
-function fireLead(eid){if(window.fbq){try{window.fbq("track","Lead",{},eid?{eventID:eid}:undefined)}catch(e){}}}
-function fireLeadFromResponse(r){try{r.clone().json().then(function(d){fireLead(d&&d.eventId)}).catch(function(){fireLead()})}catch(e){fireLead()}}
+function fireLead(eid,p){if(window.fbq){try{window.fbq("track","Lead",{},eid?{eventID:eid}:undefined)}catch(e){}}ga("generate_lead",{form_type:"landing",landing_slug:SLUG,grade:gradeOf(p),lead_id:eid||undefined})}
+function fireLeadFromResponse(r,p){try{r.clone().json().then(function(d){fireLead(d&&d.eventId,p)}).catch(function(){fireLead(undefined,p)})}catch(e){fireLead(undefined,p)}}
 var _f=window.fetch?window.fetch.bind(window):null;
 // CAPI PageView 커버리지: 픽셀 PageView를 클라이언트 생성 event_id로 발사하고,
 // 같은 id를 서버(/api/meta/pageview)로 보내 중복 제거한다. _fbp 쿠키가 픽셀에 의해
@@ -105,7 +117,7 @@ if(_f){window.fetch=function(u,o){
       if(p.utm_source==null)p.utm_source=TRACK.utm_source;if(p.utm_medium==null)p.utm_medium=TRACK.utm_medium;if(p.utm_campaign==null)p.utm_campaign=TRACK.utm_campaign;if(p.utm_content==null)p.utm_content=TRACK.utm_content;if(p.utm_term==null)p.utm_term=TRACK.utm_term;
       p.custom_data=p.custom_data||{};if(p.custom_data.fbclid==null)p.custom_data.fbclid=TRACK.fbclid;
       o.body=JSON.stringify(p)}catch(e){}
-    return _f(u,o).then(function(r){if(r.ok)fireLeadFromResponse(r);if(!r.ok&&r.status>=500&&p)enq(p);return r}).catch(function(e){if(p)enq(p);throw e});
+    return _f(u,o).then(function(r){if(r.ok)fireLeadFromResponse(r,p);if(!r.ok&&r.status>=500&&p)enq(p);return r}).catch(function(e){if(p)enq(p);throw e});
   }
   return _f(u,o);
 };}
@@ -123,6 +135,9 @@ document.addEventListener("submit",function(e){
   if(!_f){enq(p);alert("\\uc2e0\\uccad\\uc774 \\uc811\\uc218\\ub418\\uc5c8\\uc2b5\\ub2c8\\ub2e4.");return}
   window.fetch(EP,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)}).then(function(r){if(r.ok){try{f.style.display="none"}catch(e3){}alert("\\uc2e0\\uccad\\uc774 \\uc811\\uc218\\ub418\\uc5c8\\uc2b5\\ub2c8\\ub2e4.")}else{alert("\\uc7a0\\uc2dc \\ud6c4 \\ub2e4\\uc2dc \\uc2dc\\ub3c4\\ud574 \\uc8fc\\uc138\\uc694.")}}).catch(function(){alert("\\ub124\\ud2b8\\uc6cc\\ud06c \\uc624\\ub958 \\u2014 \\uc7a0\\uc2dc \\ud6c4 \\uc790\\ub3d9 \\uc7ac\\uc804\\uc1a1\\ub429\\ub2c8\\ub2e4.")})
 },false);
+// GA4 연락 클릭: 전화·카카오톡 채널 링크 (위치는 data-track-location 조상, 없으면 landing)
+document.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("a[href]"):null;if(!a)return;var h=a.getAttribute("href")||"";var c=a.closest("[data-track-location]");var l=c?c.getAttribute("data-track-location"):"landing";
+  if(h.indexOf("tel:")===0)ga("contact_click",{method:"phone",location:l,landing_slug:SLUG});else if(h.indexOf("pf.kakao.com")>=0)ga("contact_click",{method:"kakao",location:l,landing_slug:SLUG})},true);
 window.addEventListener("online",flush);
 if(document.readyState==="loading")window.addEventListener("DOMContentLoaded",flush);else flush();
 })();</script>`;
