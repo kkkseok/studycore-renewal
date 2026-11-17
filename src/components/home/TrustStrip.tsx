@@ -12,7 +12,7 @@ interface Stat {
 
 const stats: Stat[] = [
   { value: "2026", numericValue: 2026, label: "개원 연도", suffix: "" },
-  { value: "10", numericValue: 10, label: "애플타워", suffix: "층 전층" },
+  { value: "10", numericValue: 10, label: "애플타워", suffix: "층" },
   { value: "1:1", numericValue: null, label: "원장 직접 관리", suffix: "" },
   { value: "365", numericValue: 365, label: "연중 운영", suffix: "일" },
 ];
