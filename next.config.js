@@ -15,6 +15,7 @@ const withPWA = require("next-pwa")({
  * - Supabase Storage·Realtime: *.supabase.co / *.supabase.in
  * - Meta Pixel: connect.facebook.net (script), www.facebook.com (img/frame)
  * - Kakao Maps: dapi.kakao.com (script), t1.daumcdn.net (asset)
+ * - Google Maps 임베드 (홈 CTA 지도 iframe): maps.google.com → www.google.com/maps/embed 리다이렉트 (frame)
  * - Unsplash 데모 이미지: images.unsplash.com
  *
  * 위반 발견 시 buildContentSecurityPolicy()의 해당 directive에 도메인 추가.
@@ -60,7 +61,7 @@ function buildContentSecurityPolicy() {
       "https://dapi.kakao.com",
     ].join(" "),
     "worker-src 'self' blob:",
-    "frame-src 'self' https://www.facebook.com",
+    "frame-src 'self' https://www.facebook.com https://maps.google.com https://www.google.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
