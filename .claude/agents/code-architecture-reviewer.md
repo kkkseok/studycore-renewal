@@ -1,3 +1,8 @@
+---
+name: code-architecture-reviewer
+description: 구현된 코드의 DDD 레이어 분리, Supabase 클라이언트 사용, 브랜드 규칙, 컴포넌트·폼 패턴을 검토하고 개선점을 파일:라인으로 제시한다. 기능 구현 후, PR 생성 전, 리팩토링 필요성 판단 시 사용.
+tools: Read, Grep, Glob
+---
 # Code Architecture Reviewer Agent
 
 ## Purpose
@@ -18,8 +23,8 @@
    - repository 간 직접 호출 여부 확인
 
 2. **Supabase 클라이언트 사용 검증**
-   - Server Component/Route Handler → createServerClient()
-   - Client Component → createBrowserClient()
+   - Server Component/Route Handler → createClient() (lib/supabase/server.ts)
+   - Client Component → createClient() 또는 별칭 createBrowserClient() (lib/supabase/client.ts)
    - SERVICE_ROLE_KEY 클라이언트 노출 여부
 
 3. **브랜드 규칙 준수 검증**
@@ -56,7 +61,7 @@
 | user   | ✅    | ✅         | ✅      | OK   |
 
 ## Supabase 클라이언트
-- [파일:라인] ✅ createServerClient() 사용
+- [파일:라인] ✅ 올바른 Supabase 클라이언트 사용
 - [파일:라인] ❌ 잘못된 클라이언트 사용
 
 ## 브랜드 규칙

@@ -164,7 +164,7 @@ BaseModal이 제공: ESC 닫기, 오버레이 클릭, 스크롤 잠금, 포커�
 ## 홈페이지 섹션 (src/components/home/)
 `src/app/page.tsx`에서 순서대로:
 ```
-HeroSection → TrustStrip → FeaturesSection → ProgramsSection
+HeroSection → FeaturesSection → ProgramsSection
 → SpaceSlider → FAQSection → CTASection → PopupModal
 ```
 섹션 번호 라벨(01~05) 사용.

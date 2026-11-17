@@ -29,23 +29,8 @@ description: "스터디코어 1.0 브랜드 디자인 시스템. 스타일링·�
 
 ## Tailwind 컬러 매핑
 
-```typescript
-// tailwind.config.ts
-colors: {
-  navy: {
-    DEFAULT: '#103050',
-    dark: '#0A1F35',
-  },
-  teal: {
-    DEFAULT: '#57ADB1',
-    dark: '#3D8F94',
-  },
-  stone: '#F4F2EE',
-  ink: '#111111',
-  muted: '#888888',
-  rule: '#E3E0DA',
-}
-```
+Tailwind v4: 토큰은 `src/app/globals.css`의 `@theme inline`에 정의 (`--color-navy`, `--color-navy-dark`, `--color-teal`, `--color-teal-dark`, `--color-stone`, `--color-ink`, `--color-muted`, `--color-rule`).
+클래스는 `bg-navy`, `text-navy-dark`, `border-rule`처럼 토큰 이름을 그대로 쓴다. 새 색상은 `@theme`에 추가한다.
 
 ## 타이포그래피 (next/font/google)
 

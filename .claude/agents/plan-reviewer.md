@@ -1,3 +1,8 @@
+---
+name: plan-reviewer
+description: planner가 만든 구현 계획을 STUDYCORE_SPEC_v1.0.md·브랜드 규칙·보안·DDD 3파일 패턴 대비 검증하고 승인/수정 필요/반려를 판정한다. 구현 시작 전 최종 검토나 아키텍처 결정 변경 시 사용.
+tools: Read, Grep, Glob
+---
 # Plan Reviewer Agent
 
 ## Purpose

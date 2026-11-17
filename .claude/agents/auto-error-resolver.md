@@ -1,3 +1,8 @@
+---
+name: auto-error-resolver
+description: npm run build, npm run lint, tsc 타입 에러가 났을 때 원인을 분석해 최소 범위로 수정하고 빌드·린트를 다시 실행해 해소를 확인한다.
+tools: Bash, Read, Grep, Glob, Edit
+---
 # Auto Error Resolver Agent
 
 ## Purpose
