@@ -114,6 +114,19 @@ const nextConfig = {
       },
     ];
   },
+  // Production 배포의 *.vercel.app 주소(구 Vercel 계정 프로젝트 포함)는 정본 도메인으로 보낸다.
+  // Preview 배포는 테스트용으로 열어 둔다 (VERCEL_ENV는 빌드 시점에 결정).
+  async redirects() {
+    if (process.env.VERCEL_ENV !== "production") return [];
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "(?<sub>.+)\\.vercel\\.app" }],
+        destination: "https://studycore.kr/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 module.exports = withPWA(nextConfig);
