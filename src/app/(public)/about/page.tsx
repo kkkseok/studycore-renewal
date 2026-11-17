@@ -7,9 +7,9 @@ import {
 } from "@/components/about";
 
 export const metadata: Metadata = {
-  title: "학원 소개",
+  title: "독서실 소개 · 시설 · 오시는 길",
   description:
-    "스터디코어 1.0 학원 소개. 광주 광산구 관리형 학습공간 — 시설 안내, 교시제 운영 방식, 오시는 길을 확인하세요.",
+    "광주 광산구 수완지구 관리형 독서실 스터디코어 1.0 소개. 시설과 좌석 환경, 교시제 운영 방식, 임방울대로 330 애플타워 10층 오시는 길을 확인하세요.",
   alternates: {
     canonical: "https://studycore.kr/about",
   },

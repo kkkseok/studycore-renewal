@@ -87,24 +87,18 @@ export function HeroSection() {
           initial="hidden"
           animate="show"
         >
-          {/* 대표문구 상단 */}
-          <motion.p
-            variants={fadeUp}
-            className="font-serif text-fluid-h3 font-medium text-white/60 tracking-heading leading-ui mb-2 md:mb-3"
-          >
-            학습관리의 첫 번째 완성형 시스템
-          </motion.p>
-
-          {/* 브랜드명: 스터디코어1.0 */}
-          <motion.h1
-            variants={fadeUp}
-            className="font-serif text-fluid-display font-black leading-heading tracking-heading text-white/90"
-          >
-            <span className="text-teal" style={{ textShadow: "0 0 40px rgba(87,173,177,0.15)" }}>
-              스터디코어
+          {/* H1 = 지역·업종 키워드(상단 줄) + 브랜드명. 검색엔진이 업종을 읽도록 한 h1 안에 둔다 */}
+          <motion.h1 variants={fadeUp}>
+            <span className="block font-serif text-fluid-h3 font-medium text-white/60 tracking-heading leading-ui mb-2 md:mb-3">
+              광주 수완지구 관리형 독서실
             </span>
-            <span className="text-white/20 ml-2 md:ml-4">
-              1.0
+            <span className="block font-serif text-fluid-display font-black leading-heading tracking-heading text-white/90">
+              <span className="text-teal" style={{ textShadow: "0 0 40px rgba(87,173,177,0.15)" }}>
+                스터디코어
+              </span>
+              <span className="text-white/20 ml-2 md:ml-4">
+                1.0
+              </span>
             </span>
           </motion.h1>
         </motion.div>
@@ -151,7 +145,7 @@ export function HeroSection() {
             <strong className="text-white/65 font-medium">
               대표원장이 직접 설계·운영하는
             </strong>{" "}
-            관리형 학습공간으로 메디컬 재학 중인 최상위권 조교의 학습 관리와
+            관리형 독서실로 메디컬 재학 중인 최상위권 조교의 학습 관리와
             턴게이트 기반 출결 시스템, 몰입에 최적화된 공간을 통해 학습의 전
             과정을 체계적으로 관리합니다.
           </p>
@@ -179,7 +173,7 @@ export function HeroSection() {
               <strong className="text-white/75 font-medium">
                 대표원장이 직접 설계·운영하는
               </strong>{" "}
-              관리형 학습공간으로
+              관리형 독서실로
               <br />
               메디컬 재학 중인 최상위권 조교의 학습 관리와
               <br />
@@ -204,7 +198,7 @@ export function HeroSection() {
           >
             <MetaItem label="Location" value={CONTACT.address} />
             <MetaItem label="Contact" value="카카오톡 문의" href={CONTACT.kakaoChatChannel} />
-            <MetaItem label="Type" value="관리형 학습공간" />
+            <MetaItem label="Type" value="관리형 독서실" />
           </motion.div>
         </div>
 

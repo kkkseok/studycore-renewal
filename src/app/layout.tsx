@@ -34,12 +34,15 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL("https://studycore.kr"),
   title: {
-    default: "스터디코어 1.0 | 구조가 성적을 만든다",
+    default: "광주 광산구 관리형 독서실 | 스터디코어 1.0",
     template: "%s | 스터디코어 1.0",
   },
   description:
-    "구조가 성적을 만든다. 광주 광산구 관리형 학습공간 스터디코어 1.0 — 교시제 시스템으로 체계적 시간 관리, AI 수학 질문방, 원장 직접 관리. 중·고등학생 자기주도학습의 새로운 기준.",
+    "광주 광산구 수완지구 관리형 독서실 스터디코어 1.0. 교시제 시간표, 턴게이트 출결·보호자 알림, 휴대폰 수거, AI 수학 질문방, 대표원장 직접 관리로 중·고등학생과 N수생의 자습을 관리합니다.",
   keywords: [
+    "관리형 독서실",
+    "광산구 관리형 독서실",
+    "수완지구 독서실",
     "광주 독서실",
     "광산구 독서실",
     "관리형 학습공간",
@@ -79,15 +82,15 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     url: "https://studycore.kr",
     siteName: "스터디코어 1.0",
-    title: "스터디코어 1.0 | 구조가 성적을 만든다",
+    title: "광주 광산구 관리형 독서실 | 스터디코어 1.0",
     description:
-      "구조가 성적을 만든다. 광주 광산구 관리형 학습공간 — 교시제 시스템, AI 수학 질문방, 원장 직접 관리",
+      "광산구 수완지구 관리형 독서실 — 교시제 시간표, 턴게이트 출결, 휴대폰 수거, AI 수학 질문방, 대표원장 직접 관리",
   },
   twitter: {
     card: "summary_large_image",
-    title: "스터디코어 1.0 | 구조가 성적을 만든다",
+    title: "광주 광산구 관리형 독서실 | 스터디코어 1.0",
     description:
-      "구조가 성적을 만든다. 교시제 시스템, AI 수학 질문방, 원장 직접 관리",
+      "광산구 수완지구 관리형 독서실 — 교시제 시간표, 턴게이트 출결, 휴대폰 수거, 대표원장 직접 관리",
   },
   robots: {
     index: true,
