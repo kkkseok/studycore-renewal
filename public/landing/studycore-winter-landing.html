@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>STUDYCORE 1.0 윈터스쿨 2027 — 상담 신청</title>
-<meta name="description" content="2027 스터디코어1.0 윈터스쿨. 2026.12.28~2027.2.28 · 평일 의무학습 10~22시 하루 7교시 · 휴대폰 제출·턴게이트 출결관리 · 메디컬 재학 조교와 대표원장 직접 관리. 이름·연락처·학교/학년을 남기면 등록 안내를 드립니다.">
+<meta name="description" content="2027 스터디코어1.0 윈터스쿨. 2026.12.28~2027.2.28 · 평일 의무학습 10~22시 하루 7교시 · 휴대폰 제출·턴게이트 출결관리 · 메디컬 재학 조교와 대표원장 직접 관리. 이름·연락처·학년을 남기면 등록 안내를 드립니다.">
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
 <meta property="og:type" content="website">
@@ -259,6 +259,10 @@ body.modal-open { overflow: hidden; }
 .form-submit:disabled { background: rgba(87,173,177,0.35); cursor: not-allowed; }
 .form-secure { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 13px; font-size: 11px; color: rgba(255,255,255,0.42); letter-spacing: -0.01em; }
 
+.form-field.has-error input, .form-field.has-error select { border-color: #FF8A8A; }
+.field-error { display: none; margin-top: 6px; font-size: 11.5px; color: #FFB4B4; letter-spacing: -0.01em; line-height: 1.5; }
+.has-error > .field-error { display: block; }
+.agreement-box.has-error { border-color: #FF8A8A; }
 .form-success { display: none; text-align: center; padding: 38px 16px; background: rgba(87,173,177,0.12); border: 1px solid rgba(127,208,211,0.32); border-radius: 14px; margin-top: 16px; }
 .form-success.visible { display: block; }
 .form-success-icon { width: 48px; height: 48px; margin: 0 auto 14px; border: 1px solid var(--teal-l); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--teal-l); font-size: 22px; }
@@ -566,22 +570,24 @@ body.modal-open { overflow: hidden; }
     <form id="leadFormElement" onsubmit="submitForm(event)" novalidate>
       <div class="form-field">
         <label class="fl" for="userName">학생 이름</label>
-        <input type="text" id="userName" name="name" placeholder="홍길동" required maxlength="10" autocomplete="name">
+        <input type="text" id="userName" name="name" placeholder="홍길동" required maxlength="10" autocomplete="name" aria-describedby="err-userName">
+        <p class="field-error" id="err-userName" role="alert"></p>
       </div>
 
       <div class="form-field">
         <label class="fl" for="userPhone">연락처 (학부모 또는 학생)</label>
-        <input type="tel" id="userPhone" name="phone" placeholder="010-1234-5678" required maxlength="13" autocomplete="tel" inputmode="numeric" oninput="autoHyphen(this)">
+        <input type="tel" id="userPhone" name="phone" placeholder="010-1234-5678" required maxlength="13" autocomplete="tel" inputmode="numeric" oninput="autoHyphen(this)" aria-describedby="err-userPhone">
+        <p class="field-error" id="err-userPhone" role="alert"></p>
       </div>
 
       <div class="form-row">
         <div class="form-field">
-          <label class="fl" for="userSchool">학교</label>
-          <input type="text" id="userSchool" name="school" placeholder="○○고등학교" required maxlength="20">
+          <label class="fl" for="userSchool">학교 (선택)</label>
+          <input type="text" id="userSchool" name="school" placeholder="○○고등학교" maxlength="20">
         </div>
         <div class="form-field">
           <label class="fl" for="userGrade">학년 (2027년 기준)</label>
-          <select id="userGrade" name="grade" required>
+          <select id="userGrade" name="grade" required aria-describedby="err-userGrade">
             <option value="" disabled selected hidden>선택</option>
             <option value="중학생">중학생</option>
             <option value="예비고1">예비 고1</option>
@@ -590,10 +596,11 @@ body.modal-open { overflow: hidden; }
             <option value="N수생">N수생</option>
             <option value="기타">기타</option>
           </select>
+          <p class="field-error" id="err-userGrade" role="alert"></p>
         </div>
       </div>
 
-      <div class="agreement-box">
+      <div class="agreement-box" id="agreementBox">
         <label class="agreement-row all" for="agreeAll">
           <input type="checkbox" id="agreeAll" class="checkbox" onchange="toggleAll(this)">
           <span class="agreement-label">[전체 동의] 필수 및 선택 항목에 모두 동의합니다</span>
@@ -609,6 +616,7 @@ body.modal-open { overflow: hidden; }
           <button type="button" class="agreement-detail-btn" onclick="event.preventDefault(); openModal('modal-marketing')">전문</button>
         </label>
         <p class="minor-note">※ 신청자가 만 14세 미만 미성년자인 경우, 법정대리인(보호자)의 동의가 필요합니다.</p>
+        <p class="field-error" id="err-privacy" role="alert"></p>
       </div>
 
       <p class="form-risk">윈터스쿨 시작 전 취소 시 예약금·등록비 전액 환불</p>
@@ -671,7 +679,7 @@ body.modal-open { overflow: hidden; }
     <div class="modal-body">
       <p>STUDYCORE 1.0(스터디코어1.0)은 윈터스쿨 상담 안내를 위해 다음과 같이 개인정보를 수집·이용합니다.</p>
       <ul>
-        <li><strong>수집 항목:</strong> 학생 이름, 연락처, 학교, 학년</li>
+        <li><strong>수집 항목:</strong> 학생 이름, 연락처, 학년 (선택: 학교)</li>
         <li><strong>수집 목적:</strong> 윈터스쿨 상담 예약 및 안내, 등록 문의 응대</li>
         <li><strong>보유 기간:</strong> 동의일로부터 1년 (관련 법령에 따름)</li>
         <li><strong>거부 권리:</strong> 동의를 거부할 권리가 있으며, 거부 시 상담 신청이 제한됩니다.</li>
@@ -712,7 +720,7 @@ body.modal-open { overflow: hidden; }
       <p>STUDYCORE 1.0은 윈터스쿨 상담 신청 접수 및 안내를 위하여 개인정보를 수집·이용합니다.</p>
       <ul><li>상담 예약 및 응대, 등록 문의 처리</li><li>프로그램·이벤트 안내 (마케팅 동의 시)</li></ul>
       <h4>2. 수집 항목</h4>
-      <ul><li>필수: 학생 이름, 연락처, 학교, 학년</li><li>선택: 마케팅 수신 동의 여부</li></ul>
+      <ul><li>필수: 학생 이름, 연락처, 학년</li><li>선택: 학교, 마케팅 수신 동의 여부</li></ul>
       <h4>3. 보유 및 이용 기간</h4>
       <p>수집 동의일로부터 1년간 보유하며, 관련 법령에서 정한 기간 동안 보관 의무가 있는 경우 해당 기간 동안 보관합니다.</p>
       <h4>4. 만 14세 미만 아동의 개인정보</h4>
@@ -774,8 +782,9 @@ window.addEventListener('scroll', () => {
 
 function scrollToForm(e) {
   e.preventDefault();
+  // 입력 칸에 자동 포커스하지 않는다: 휴대폰 키보드가 바로 올라와 안내 문구를 가리고,
+  // GA4 lead_form_start가 실제 입력 없이 집계되는 문제가 있었다.
   formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  setTimeout(() => document.getElementById('userName').focus(), 600);
 }
 
 function autoHyphen(input) {
@@ -796,6 +805,30 @@ function checkIndividual() {
   document.getElementById('agreeAll').checked = (p && m);
 }
 
+function errorHost(id) {
+  return id === 'privacy' ? document.getElementById('agreementBox') : document.getElementById(id).closest('.form-field');
+}
+function showError(id, msg) {
+  const host = errorHost(id);
+  host.classList.add('has-error');
+  document.getElementById('err-' + id).textContent = msg;
+}
+function clearError(id) {
+  const host = errorHost(id);
+  host.classList.remove('has-error');
+  document.getElementById('err-' + id).textContent = '';
+}
+function clearErrors() { ['userName', 'userPhone', 'userGrade', 'privacy'].forEach(clearError); }
+// 고치는 즉시 오류 표시를 지운다
+['userName', 'userPhone', 'userGrade'].forEach((id) => {
+  document.getElementById(id).addEventListener(id === 'userGrade' ? 'change' : 'input', () => clearError(id));
+});
+['privacy', 'agreeAll'].forEach((id) => {
+  document.getElementById(id).addEventListener('change', () => {
+    if (document.getElementById('privacy').checked) clearError('privacy');
+  });
+});
+
 function openModal(id) { document.getElementById(id).classList.add('open'); document.body.classList.add('modal-open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.classList.remove('modal-open'); }
 
@@ -808,12 +841,24 @@ async function submitForm(event) {
   const privacy = document.getElementById('privacy').checked;
   const marketing = document.getElementById('marketing').checked;
 
-  if (!name || name.length < 2) { alert('학생 이름을 정확히 입력해주세요.'); document.getElementById('userName').focus(); return; }
+  // 입력 오류는 경고창 대신 칸 아래에 표시하고, 오류가 난 칸 이름만 GA4로 보낸다(입력값은 보내지 않음).
+  clearErrors();
   const phoneRegex = /^01([0|1|6|7|8|9])-?([0-9]{3,4})-?([0-9]{4})$/;
-  if (!phoneRegex.test(phone)) { alert('유효한 휴대폰 번호를 입력해주세요.\n(예: 010-0000-0000)'); document.getElementById('userPhone').focus(); return; }
-  if (!school) { alert('학교명을 입력해주세요.'); document.getElementById('userSchool').focus(); return; }
-  if (!grade) { alert('학년을 선택해주세요.'); document.getElementById('userGrade').focus(); return; }
-  if (!privacy) { alert('개인정보 수집·이용에 동의해주세요.'); return; }
+  const errors = [];
+  if (!name || name.length < 2) errors.push(['userName', '학생 이름을 2자 이상 입력해 주세요.']);
+  if (!phoneRegex.test(phone)) errors.push(['userPhone', '휴대폰 번호를 확인해 주세요. (예: 010-1234-5678)']);
+  if (!grade) errors.push(['userGrade', '학년을 선택해 주세요.']);
+  if (!privacy) errors.push(['privacy', '개인정보 수집·이용에 동의해 주세요.']);
+  if (errors.length) {
+    errors.forEach(([id, msg]) => showError(id, msg));
+    const first = errors[0][0];
+    const target = first === 'privacy' ? document.getElementById('agreementBox') : document.getElementById(first);
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // GA4 field 값은 홈페이지 상담 폼(consult)과 같은 이름 규칙으로 보낸다
+    const GA_FIELD = { userName: 'name', userPhone: 'phone', userGrade: 'grade', privacy: 'privacy' };
+    if (window.__lpFormError) window.__lpFormError(GA_FIELD[first] || first);
+    return;
+  }
 
   const submitBtn = document.getElementById('submitBtn');
   submitBtn.innerHTML = '신청 중…';

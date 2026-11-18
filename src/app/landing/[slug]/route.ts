@@ -22,8 +22,10 @@ import { getLandingForServe } from "@/domains/landing/service";
  *     써서 서버 CAPI 이벤트와 중복 제거한다. URL의 utm_* 파라미터·fbclid도 캡처해 함께 전송.
  *  5) GA4: NEXT_PUBLIC_GA_MEASUREMENT_ID가 있으면 gtag.js를 로드(config가 page_view 전송)하고,
  *     리드 성공 시 generate_lead, 전화·카카오톡 채널 링크 클릭 시 contact_click,
- *     폼 첫 입력 포커스 시 lead_form_start, 리드 저장 실패 시 lead_form_fail(server·rate_limit·network)을 보낸다.
- *     업로드 HTML 자체의 입력 검증 실패(alert 등)는 게이트웨이가 알 수 없어 기록되지 않는다.
+ *     폼에 처음 입력·선택 시 lead_form_start(포커스만으로는 세지 않음), 리드 저장 실패 시
+ *     lead_form_fail(server·rate_limit·network)을 보낸다. 업로드 HTML이 자체 입력 검증에 실패하면
+ *     window.__lpFormError(칸 이름)를 호출해 lead_form_fail(reason=validation, field)을 남길 수 있다.
+ *     호출하지 않는 HTML의 검증 실패(alert 등)는 기록되지 않는다.
  *     이름·전화번호 등 개인정보는 GA4로 보내지 않는다(학년 선택값만).
  *     스태프가 로그인한 브라우저(localStorage sc_ga_internal=1, lib/analytics.ts)는 GA 전송을 끈다.
  *
@@ -142,9 +144,14 @@ document.addEventListener("submit",function(e){
 // GA4 연락 클릭: 전화·카카오톡 채널 링크 (위치는 data-track-location 조상, 없으면 landing)
 document.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("a[href]"):null;if(!a)return;var h=a.getAttribute("href")||"";var c=a.closest("[data-track-location]");var l=c?c.getAttribute("data-track-location"):"landing";
   if(h.indexOf("tel:")===0)ga("contact_click",{method:"phone",location:l,landing_slug:SLUG});else if(h.indexOf("pf.kakao.com")>=0)ga("contact_click",{method:"kakao",location:l,landing_slug:SLUG})},true);
-// GA4 폼 시작: 폼 안의 입력 요소에 처음 포커스할 때 1회
+// GA4 폼 시작: 폼 안의 입력 요소에 방문자가 처음 입력·선택할 때 1회 (포커스만으로는 세지 않는다 —
+// CTA 클릭 후 자동 포커스나 단순 탭이 '입력 시작'으로 부풀려지는 문제 방지, 2026-11-19 변경)
 var formStarted=false;
-document.addEventListener("focusin",function(e){if(formStarted)return;var t=e.target;if(!t||!t.closest||!t.closest("form"))return;var tn=t.tagName;if(tn!=="INPUT"&&tn!=="SELECT"&&tn!=="TEXTAREA")return;formStarted=true;ga("lead_form_start",{form_type:"landing",landing_slug:SLUG})},true);
+function onFormInput(e){if(formStarted||!e.isTrusted)return;var t=e.target;if(!t||!t.closest||!t.closest("form"))return;var tn=t.tagName;if(tn!=="INPUT"&&tn!=="SELECT"&&tn!=="TEXTAREA")return;formStarted=true;ga("lead_form_start",{form_type:"landing",landing_slug:SLUG})}
+document.addEventListener("input",onFormInput,true);
+document.addEventListener("change",onFormInput,true);
+// 업로드 HTML이 자체 입력 검증에 실패했을 때 호출하는 훅. 칸 이름만 보낸다(입력값은 보내지 않음).
+window.__lpFormError=function(field){ga("lead_form_fail",{form_type:"landing",landing_slug:SLUG,reason:"validation",field:String(field||"").slice(0,30)})};
 window.addEventListener("online",flush);
 if(document.readyState==="loading")window.addEventListener("DOMContentLoaded",flush);else flush();
 })();</script>`;
