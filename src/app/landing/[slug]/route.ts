@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
+import { unstable_cache } from "next/cache";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getLandingForServe } from "@/domains/landing/service";
+import { logger } from "@/lib/logger";
 
 /**
  * 광고 랜딩페이지 동적 서빙 + 리드 게이트웨이 주입
@@ -38,18 +40,47 @@ import { getLandingForServe } from "@/domains/landing/service";
  * SSR 클라이언트는 set-cookie를 유발해 CDN 캐싱을 무력화하므로, 공개 읽기 전용
  * anon 클라이언트(쿠키 비의존, RLS landing_public_read)로 조회한다.
  */
+/**
+ * 랜딩 HTML 조회 결과를 서버 데이터 캐시에 60초 보관한다.
+ *
+ * Meta 광고 클릭은 매번 다른 fbclid가 URL에 붙어 CDN 캐시가 항상 MISS가 된다.
+ * 그때마다 DB에서 HTML(약 200KB)을 다시 읽느라 광고 방문자만 응답이 1.6~3초 걸렸다
+ * (2026-11-19 실측: 캐시 HIT 0.15초). URL 쿼리와 무관하게 slug 단위로 데이터를
+ * 캐시해 MISS 경로에서도 DB 왕복을 없앤다. DB 오류는 throw되어 캐시되지 않는다.
+ * 어드민 수정 반영은 데이터 캐시 60초 + CDN 60초로 최대 약 2분.
+ */
+const getCachedLanding = unstable_cache(
+  async (slug: string) => {
+    const supabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { persistSession: false } }
+    );
+    return getLandingForServe(supabase, slug);
+  },
+  ["landing-serve"],
+  { revalidate: 60, tags: ["landing"] }
+);
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
 
-  const supabase = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } }
-  );
-  const landing = await getLandingForServe(supabase, slug);
+  let landing;
+  try {
+    landing = await getCachedLanding(slug);
+  } catch (error) {
+    logger.exception(error, "landing.serve");
+    return new Response("Service Unavailable", {
+      status: 503,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
 
   if (!landing) {
     return new Response("Not Found", {
@@ -72,7 +103,7 @@ export async function GET(
       "Content-Type": "text/html; charset=utf-8",
       // CDN 엣지 캐싱: s-maxage 동안 캐시, 만료 후엔 stale-while-revalidate로
       // 캐시를 즉시 응답(방문자 대기 0)하면서 백그라운드로 갱신. 어드민이 HTML을
-      // 수정하면 최대 약 60초 내 전파된다.
+      // 수정하면 최대 약 2분 내 전파된다(위 데이터 캐시 60초 + CDN 60초).
       "Cache-Control": "public, s-maxage=60, stale-while-revalidate=86400",
     },
   });

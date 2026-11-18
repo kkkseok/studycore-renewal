@@ -50,16 +50,15 @@ export async function getLandingDetail(
 }
 
 /** 공개 서빙용 — 활성 slug만, 에러 시 null */
+/**
+ * 공개 서빙용 조회. 없거나 비활성이면 null, DB 오류는 throw 한다.
+ * (호출측이 결과를 캐시하므로, 일시적 오류를 '없음'으로 바꿔 1분간 404가 캐시되는 일을 막는다)
+ */
 export async function getLandingForServe(
   supabase: SupabaseClient,
   slug: string
 ): Promise<Landing | null> {
-  try {
-    return await landingRepo.getLandingBySlug(supabase, slug);
-  } catch (error) {
-    console.error("랜딩페이지 서빙 조회 실패:", error);
-    return null;
-  }
+  return landingRepo.getLandingBySlug(supabase, slug);
 }
 
 export async function createLanding(
