@@ -7,10 +7,14 @@
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
+import { AUDIT_ACTIONS, AUDIT_RESOURCES, createAuditLog } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 import {
   consultationFormSchema,
+  consultationOutcomeSchema,
   createConsultationSchema,
   type ConsultationFormInput,
+  type ConsultationOutcomeInput,
   type ConsultationServiceResult,
   type Consultation,
 } from "./model";
@@ -173,6 +177,55 @@ export async function changeConsultationStatus(
         error instanceof Error
           ? error.message
           : "상담 상태 변경 중 오류가 발생했습니다",
+    };
+  }
+}
+
+/**
+ * 상담 결과 변경 (어드민용) — 대상 리드 여부·제외 사유·등록 여부
+ *
+ * 광고 성과를 대상 리드·등록 기준으로 집계하기 위한 값이다.
+ * 대상 리드가 아니면 제외 사유가 필요하고, 그 외에는 제외 사유를 비운다.
+ */
+export async function changeConsultationOutcome(
+  supabase: SupabaseClient,
+  consultationId: string,
+  outcome: ConsultationOutcomeInput
+): Promise<ConsultationServiceResult> {
+  const parsed = consultationOutcomeSchema.safeParse(outcome);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  try {
+    const consultation = await consultationRepo.updateConsultationOutcome(
+      supabase,
+      consultationId,
+      parsed.data
+    );
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      void createAuditLog(supabase, {
+        actorId: user.id,
+        action: AUDIT_ACTIONS.CONSULTATION_OUTCOME_UPDATE,
+        resourceType: AUDIT_RESOURCES.CONSULTATION,
+        resourceId: consultationId,
+        changes: parsed.data,
+      });
+    }
+
+    return { success: true, consultation };
+  } catch (error) {
+    logger.exception(error, "changeConsultationOutcome");
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "상담 결과 변경 중 오류가 발생했습니다",
     };
   }
 }

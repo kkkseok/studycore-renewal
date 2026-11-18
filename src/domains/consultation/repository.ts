@@ -7,7 +7,11 @@
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
-import type { Consultation, CreateConsultationInput } from "./model";
+import type {
+  Consultation,
+  ConsultationOutcomeInput,
+  CreateConsultationInput,
+} from "./model";
 
 /**
  * 상담 신청 생성
@@ -114,6 +118,28 @@ export async function updateConsultationStatus(
 
   if (error) {
     throw new Error(`상담 상태 업데이트 실패: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * 상담 결과(대상 리드 여부·제외 사유·등록 여부) 업데이트
+ */
+export async function updateConsultationOutcome(
+  supabase: SupabaseClient,
+  id: string,
+  outcome: ConsultationOutcomeInput
+): Promise<Consultation> {
+  const { data, error } = await supabase
+    .from("consultations")
+    .update(outcome)
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`상담 결과 업데이트 실패: ${error.message}`);
   }
 
   return data;

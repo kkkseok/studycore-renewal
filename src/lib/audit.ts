@@ -30,6 +30,9 @@ export const AUDIT_ACTIONS = {
 
   // 설정 관련
   SETTINGS_UPDATE: "settings.update",
+
+  // 상담 관련
+  CONSULTATION_OUTCOME_UPDATE: "consultation.outcome_update",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
@@ -41,6 +44,7 @@ export const AUDIT_RESOURCES = {
   QUESTION: "question",
   BLOG: "blog",
   SETTINGS: "settings",
+  CONSULTATION: "consultation",
 } as const;
 
 export type AuditResource = (typeof AUDIT_RESOURCES)[keyof typeof AUDIT_RESOURCES];

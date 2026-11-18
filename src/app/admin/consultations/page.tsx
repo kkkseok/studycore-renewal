@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState, useCallback } from "react";
+import { Fragment, useEffect, useRef, useState, useCallback } from "react";
 import { ChevronDown, ChevronUp, Phone, Trash2 } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/common/Toast";
@@ -9,11 +9,14 @@ import { ConfirmModal } from "@/components/admin/ConfirmModal";
 import {
   getConsultationList,
   changeConsultationStatus,
+  changeConsultationOutcome,
   deleteConsultation,
 } from "@/domains/consultation/service";
 import type {
   Consultation,
+  ConsultationOutcomeInput,
   ConsultationStatusType,
+  ExcludeReasonType,
 } from "@/domains/consultation/model";
 import { formatDistanceToNow } from "@/lib/utils";
 import { formatPhoneDisplay } from "@/hooks/usePhoneFormat";
@@ -40,7 +43,40 @@ const CONSULT_TYPE_LABELS: Record<string, string> = {
 // 유입 경로(source) → 어드민 표시 라벨. homepage 외 값은 광고 캠페인.
 const SOURCE_LABELS: Record<string, string> = {
   lp_studycore_summer_2026: "썸머스쿨 광고",
+  "winter-2027": "윈터스쿨 광고",
 };
+
+// 대상 리드 판정: 선택 하나로 is_target + exclude_reason을 함께 정한다.
+// "" = 미판정, "target" = 대상, 나머지 = 대상 아님 + 사유
+const TARGET_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "", label: "미판정" },
+  { value: "target", label: "대상" },
+  { value: "grade", label: "아님·학년" },
+  { value: "region", label: "아님·지역" },
+  { value: "no_contact", label: "아님·연락 안 됨" },
+  { value: "other", label: "아님·기타" },
+];
+
+// 등록 여부: "" = 미정
+const ENROLLED_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "", label: "미정" },
+  { value: "yes", label: "등록" },
+  { value: "no", label: "미등록" },
+];
+
+/** 레코드 → 대상 판정 select 값 */
+function targetValue(c: Consultation): string {
+  if (c.is_target === true) return "target";
+  if (c.is_target === false) return c.exclude_reason ?? "other";
+  return "";
+}
+
+/** 레코드 → 등록 select 값 */
+function enrolledValue(c: Consultation): string {
+  if (c.enrolled === true) return "yes";
+  if (c.enrolled === false) return "no";
+  return "";
+}
 
 // utm 상세(확장 영역) 표시용 라벨
 const UTM_LABELS: Record<string, string> = {
@@ -83,9 +119,16 @@ export default function AdminConsultationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const pageSize = 15;
 
+  // 목록 조회 순번: 늦게 도착한 이전 조회 응답이 최신 화면을 덮어쓰지 않도록 마지막 조회만 반영
+  const fetchSeq = useRef(0);
+  const isFetchingRef = useRef(false);
+
   const fetchData = useCallback(async () => {
+    const seq = ++fetchSeq.current;
+    isFetchingRef.current = true;
     setIsLoading(true);
     try {
       const result = await getConsultationList(supabase, {
@@ -94,12 +137,18 @@ export default function AdminConsultationsPage() {
         page,
         pageSize,
       });
+      if (seq !== fetchSeq.current) return;
       setConsultations(result.consultations);
       setTotal(result.total);
     } catch {
-      toast({ variant: "error", description: "상담 목록 로드 실패" });
+      if (seq === fetchSeq.current) {
+        toast({ variant: "error", description: "상담 목록 로드 실패" });
+      }
     } finally {
-      setIsLoading(false);
+      if (seq === fetchSeq.current) {
+        isFetchingRef.current = false;
+        setIsLoading(false);
+      }
     }
   }, [supabase, statusFilter, sourceFilter, page, pageSize, toast]);
 
@@ -119,6 +168,38 @@ export default function AdminConsultationsPage() {
       toast({ variant: "error", description: result.error || "상태 변경 실패" });
     }
   };
+
+  // 상담 결과 저장: 바꾼 칸만 보내고(부분 업데이트), 저장 중에는 그 행의 선택 칸을 잠근다.
+  // 목록 전체를 다시 불러오지 않고 응답으로 받은 행만 교체해 오래된 조회 결과가 덮어쓰지 않게 한다.
+  const saveOutcome = async (id: string, outcome: ConsultationOutcomeInput) => {
+    setSavingIds((prev) => new Set(prev).add(id));
+    const result = await changeConsultationOutcome(supabase, id, outcome);
+    if (result.success && result.consultation) {
+      const updated = result.consultation;
+      setConsultations((prev) => prev.map((x) => (x.id === id ? updated : x)));
+      // 저장 전에 시작된 조회가 진행 중이면 그 응답은 이전 값일 수 있으므로 다시 조회한다
+      // (새 조회가 순번을 올려 이전 응답은 버려짐)
+      if (isFetchingRef.current) fetchData();
+      toast({ variant: "success", description: "상담 결과가 저장되었습니다." });
+    } else {
+      toast({ variant: "error", description: result.error || "저장 실패" });
+    }
+    setSavingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  const handleTargetChange = (id: string, value: string) =>
+    saveOutcome(id, {
+      is_target: value === "" ? null : value === "target",
+      exclude_reason:
+        value === "" || value === "target" ? null : (value as ExcludeReasonType),
+    });
+
+  const handleEnrolledChange = (id: string, value: string) =>
+    saveOutcome(id, { enrolled: value === "" ? null : value === "yes" });
 
   const handleDelete = async () => {
     if (!deleteTargetId) return;
@@ -171,13 +252,15 @@ export default function AdminConsultationsPage() {
       {/* 목록 */}
       <div className="border border-rule bg-white overflow-x-auto">
         {/* 테이블 헤더 */}
-        <div className="grid grid-cols-[1fr_104px_104px_92px_88px_104px_44px] gap-4 border-b border-rule px-4 py-3 text-caption font-medium text-muted bg-stone min-w-[760px]">
+        <div className="grid grid-cols-[minmax(150px,1fr)_96px_88px_64px_72px_88px_120px_80px_44px] gap-4 border-b border-rule px-4 py-3 text-caption font-medium text-muted bg-stone min-w-[960px]">
           <span>이름 / 연락처</span>
           <span>유입</span>
           <span>상담 유형</span>
           <span>상태</span>
           <span>신청일</span>
           <span>상태 변경</span>
+          <span>대상 리드</span>
+          <span>등록</span>
           <span>삭제</span>
         </div>
 
@@ -190,7 +273,7 @@ export default function AdminConsultationsPage() {
         ) : (
           consultations.map((c) => (
             <div key={c.id} className="border-b border-rule last:border-b-0">
-              <div className="grid grid-cols-[1fr_104px_104px_92px_88px_104px_44px] items-center gap-4 px-4 py-3 min-w-[760px]">
+              <div className="grid grid-cols-[minmax(150px,1fr)_96px_88px_64px_72px_88px_120px_80px_44px] items-center gap-4 px-4 py-3 min-w-[960px]">
                 {/* 이름 + 연락처 + 확장 토글 */}
                 <button
                   onClick={() =>
@@ -255,6 +338,36 @@ export default function AdminConsultationsPage() {
                   <option value="new">신규</option>
                   <option value="contacted">연락함</option>
                   <option value="done">완료</option>
+                </select>
+
+                {/* 대상 리드 판정 (통화 후 체크) */}
+                <select
+                  aria-label="대상 리드 판정"
+                  value={targetValue(c)}
+                  disabled={savingIds.has(c.id)}
+                  onChange={(e) => handleTargetChange(c.id, e.target.value)}
+                  className="border border-rule px-2 py-1 text-caption focus:border-navy focus:outline-none cursor-pointer disabled:cursor-wait disabled:opacity-50"
+                >
+                  {TARGET_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+
+                {/* 등록 여부 */}
+                <select
+                  aria-label="등록 여부"
+                  value={enrolledValue(c)}
+                  disabled={savingIds.has(c.id)}
+                  onChange={(e) => handleEnrolledChange(c.id, e.target.value)}
+                  className="border border-rule px-2 py-1 text-caption focus:border-navy focus:outline-none cursor-pointer disabled:cursor-wait disabled:opacity-50"
+                >
+                  {ENROLLED_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
 
                 {/* 삭제 */}

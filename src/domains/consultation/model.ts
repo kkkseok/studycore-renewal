@@ -29,6 +29,19 @@ export const ConsultationType = {
 export type ConsultationTypeValue =
   (typeof ConsultationType)[keyof typeof ConsultationType];
 
+// 대상 리드가 아닌 사유 (마이그레이션 058 CHECK 제약과 동일한 값)
+export const ExcludeReason = {
+  GRADE: "grade", // 학년이 대상 밖 (중학생 등)
+  REGION: "region", // 지역·통학 불가
+  NO_CONTACT: "no_contact", // 연락 안 됨
+  OTHER: "other", // 기타
+} as const;
+
+export type ExcludeReasonType =
+  (typeof ExcludeReason)[keyof typeof ExcludeReason];
+
+const excludeReasonValues = ["grade", "region", "no_contact", "other"] as const;
+
 // ─────────────────────────────────────────────
 // Zod 스키마
 // ─────────────────────────────────────────────
@@ -84,9 +97,52 @@ export const consultationSchema = z.object({
   source: z.string(),
   utm: z.record(z.string(), z.unknown()).nullable(),
   marketing_consent: z.boolean(),
+  // 상담 결과 컬럼 (마이그레이션 058). NULL = 아직 판정하지 않음.
+  is_target: z.boolean().nullable(),
+  exclude_reason: z.enum(excludeReasonValues).nullable(),
+  enrolled: z.boolean().nullable(),
 });
 
 export type Consultation = z.infer<typeof consultationSchema>;
+
+// 상담 결과 수정 스키마 (어드민, 부분 업데이트).
+// 보낸 칸만 바꾼다: 대상 판정(is_target + exclude_reason은 항상 한 묶음)과 등록(enrolled)은
+// 서로 독립이라, 한쪽 저장이 다른 쪽 값을 오래된 값으로 덮어쓰지 않는다.
+// 대상 아님이면 제외 사유가 있어야 하고, 대상·미판정이면 제외 사유를 비운다
+// (마이그레이션 058의 CHECK 제약과 같은 규칙).
+export const consultationOutcomeSchema = z
+  .object({
+    is_target: z.boolean().nullable().optional(),
+    exclude_reason: z.enum(excludeReasonValues).nullable().optional(),
+    enrolled: z.boolean().nullable().optional(),
+  })
+  .strict()
+  .superRefine((v, ctx) => {
+    const hasTarget = v.is_target !== undefined || v.exclude_reason !== undefined;
+    if (!hasTarget && v.enrolled === undefined) {
+      ctx.addIssue({ code: "custom", message: "변경할 값이 없습니다" });
+      return;
+    }
+    if (!hasTarget) return;
+    if (v.is_target === undefined || v.exclude_reason === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        message: "대상 여부와 제외 사유는 함께 저장해야 합니다",
+      });
+      return;
+    }
+    if (v.is_target === false && v.exclude_reason === null) {
+      ctx.addIssue({ code: "custom", message: "대상 아님 사유를 선택해주세요" });
+    }
+    if (v.is_target !== false && v.exclude_reason !== null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "제외 사유는 '대상 아님'일 때만 선택할 수 있습니다",
+      });
+    }
+  });
+
+export type ConsultationOutcomeInput = z.infer<typeof consultationOutcomeSchema>;
 
 // 상담 생성용 스키마 (id, status, created_at 제외)
 export const createConsultationSchema = consultationFormSchema.transform(
