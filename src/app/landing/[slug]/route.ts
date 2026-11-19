@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import { unstable_cache } from "next/cache";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getLandingForServe } from "@/domains/landing/service";
 import { logger } from "@/lib/logger";
@@ -41,26 +40,37 @@ import { logger } from "@/lib/logger";
  * anon 클라이언트(쿠키 비의존, RLS landing_public_read)로 조회한다.
  */
 /**
- * 랜딩 HTML 조회 결과를 서버 데이터 캐시에 60초 보관한다.
+ * 랜딩 조회 결과를 서버 함수 인스턴스 메모리에 60초 보관한다.
  *
  * Meta 광고 클릭은 매번 다른 fbclid가 URL에 붙어 CDN 캐시가 항상 MISS가 된다.
- * 그때마다 DB에서 HTML(약 200KB)을 다시 읽느라 광고 방문자만 응답이 1.6~3초 걸렸다
- * (2026-11-19 실측: 캐시 HIT 0.15초). URL 쿼리와 무관하게 slug 단위로 데이터를
- * 캐시해 MISS 경로에서도 DB 왕복을 없앤다. DB 오류는 throw되어 캐시되지 않는다.
- * 어드민 수정 반영은 데이터 캐시 60초 + CDN 60초로 최대 약 2분.
+ * 그때마다 함수(iad1)가 DB에서 HTML(약 200KB)을 다시 읽느라 광고 방문자만 응답이
+ * 1.6~1.8초 걸렸다(2026-11-19 운영 실측: DB 없는 함수 0.27초, DB 1회 1.24초).
+ * next/cache unstable_cache는 운영에서 효과가 없었다(배포 후 동일 1.6초) → 인스턴스
+ * 메모리 캐시로 교체. 첫 요청(콜드 인스턴스)만 DB를 읽는다. DB 오류는 캐시하지 않는다.
+ * 응답 헤더 Server-Timing의 landing 항목에 mem-hit/mem-miss와 조회 시간을 남긴다.
+ * 어드민 수정 반영은 메모리 60초 + CDN 60초로 최대 약 2분.
  */
-const getCachedLanding = unstable_cache(
-  async (slug: string) => {
-    const supabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false } }
-    );
-    return getLandingForServe(supabase, slug);
-  },
-  ["landing-serve"],
-  { revalidate: 60, tags: ["landing"] }
-);
+const LANDING_TTL_MS = 60_000;
+const landingMemCache = new Map<
+  string,
+  { landing: Awaited<ReturnType<typeof getLandingForServe>>; at: number }
+>();
+
+async function getCachedLanding(slug: string) {
+  const hit = landingMemCache.get(slug);
+  if (hit && Date.now() - hit.at < LANDING_TTL_MS) {
+    return { landing: hit.landing, cache: "mem-hit" as const };
+  }
+  const supabase = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false } }
+  );
+  const landing = await getLandingForServe(supabase, slug);
+  if (landingMemCache.size > 50) landingMemCache.clear();
+  landingMemCache.set(slug, { landing, at: Date.now() });
+  return { landing, cache: "mem-miss" as const };
+}
 
 export async function GET(
   _request: NextRequest,
@@ -68,9 +78,11 @@ export async function GET(
 ) {
   const { slug } = await params;
 
+  const t0 = Date.now();
   let landing;
+  let cacheState: "mem-hit" | "mem-miss";
   try {
-    landing = await getCachedLanding(slug);
+    ({ landing, cache: cacheState } = await getCachedLanding(slug));
   } catch (error) {
     logger.exception(error, "landing.serve");
     return new Response("Service Unavailable", {
@@ -82,10 +94,15 @@ export async function GET(
     });
   }
 
+  const serverTiming = `landing;desc="${cacheState}";dur=${Date.now() - t0}`;
+
   if (!landing) {
     return new Response("Not Found", {
       status: 404,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Server-Timing": serverTiming,
+      },
     });
   }
 
@@ -103,8 +120,9 @@ export async function GET(
       "Content-Type": "text/html; charset=utf-8",
       // CDN 엣지 캐싱: s-maxage 동안 캐시, 만료 후엔 stale-while-revalidate로
       // 캐시를 즉시 응답(방문자 대기 0)하면서 백그라운드로 갱신. 어드민이 HTML을
-      // 수정하면 최대 약 2분 내 전파된다(위 데이터 캐시 60초 + CDN 60초).
+      // 수정하면 최대 약 2분 내 전파된다(위 메모리 캐시 60초 + CDN 60초).
       "Cache-Control": "public, s-maxage=60, stale-while-revalidate=86400",
+      "Server-Timing": serverTiming,
     },
   });
 }
