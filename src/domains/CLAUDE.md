@@ -25,7 +25,7 @@ service.ts    → 비즈니스 로직
 | user | UserProfile, UserRole, UserStatus | 인증/권한 중심 |
 | notice | Notice, NoticeCategory, NoticeVisibility | is_pinned, is_published, visibility(public/members_only) |
 | question | Question, Answer | pending→answered |
-| consultation | Consultation | 외부 상담 신청 (new→contacted→done) |
+| consultation | Consultation | 외부 상담 신청 (new→contacted→done). 결과 칸 is_target·exclude_reason·enrolled는 `changeConsultationOutcome`(부분 업데이트 + 감사 로그) |
 | counseling | CounselingRecord | 내부 상담 기록 (**Consultation과 별개**) |
 | blog | BlogPost | slug 기반 라우팅 |
 | meal | MealPeriod, MealApplication | weekday/date 선택 |

@@ -77,7 +77,7 @@ e2e/                   E2E 테스트 (Playwright) — helpers, fixtures, tests/{
 ## 도메인 용어
 | 용어 | 의미 | 혼동 주의 |
 |------|------|----------|
-| Consultation (상담 신청) | 외부 방문자의 입소/견학 문의. status: `new→contacted→done` | Counseling과 **별개** 도메인 |
+| Consultation (상담 신청) | 외부 방문자의 입소/견학 문의. status: `new→contacted→done`. 통화 후 결과: `is_target`(대상 리드, NULL=미판정)·`exclude_reason`(대상 아님일 때만)·`enrolled`(등록) — 광고 성과(대상 리드당 비용) 집계용 | Counseling과 **별개** 도메인 |
 | Counseling (상담 기록) | 스태프↔재원생 상담 내역 기록. types: admission/career/etc | Consultation과 혼동 금지 |
 | 재원생 (student) | 등록된 학생. 계정 상태: `pending→active→inactive` | User(시스템 사용자)와 구분 |
 | 스태프 | admin · mentor · assistant 통칭. `isStaffRole()`로 판별 | |
@@ -116,7 +116,7 @@ e2e/                   E2E 테스트 (Playwright) — helpers, fixtures, tests/{
 
 ### 서버 유틸 (src/lib)
 - **Rate limit**: 외부 입력을 받는 민감 API(`consult`, `webhook/lead`, `admin/create-staff`)는 `checkRateLimitDB()`(rate_limits 테이블, 인스턴스 간 공유). 인메모리 `checkRateLimit()`은 serverless 인스턴스별로 갈라져 부정확하므로 가벼운 스팸 방지에만
-- **감사 로그**: 어드민의 데이터 변경(사용자 상태·역할, 공지, 질문 답변, 블로그, 설정)은 해당 domain `service.ts`에서 `lib/audit.ts`의 `log*()`/`createAuditLog()` 호출. 새 어드민 변경 액션도 동일하게 추가
+- **감사 로그**: 어드민의 데이터 변경(사용자 상태·역할, 공지, 질문 답변, 블로그, 설정, 상담 결과)은 해당 domain `service.ts`에서 `lib/audit.ts`의 `log*()`/`createAuditLog()` 호출. 새 어드민 변경 액션도 동일하게 추가
 - **HTML 렌더링**: DB에서 온 HTML(Tiptap 콘텐츠 등)을 `dangerouslySetInnerHTML`로 넣을 때는 반드시 `sanitizeHtml()` 경유. 코드에 하드코딩된 정적 문자열(JsonLd 등)은 예외
 - **로깅**: 새 코드는 `lib/logger.ts`의 `logger` 사용 (프로덕션에서 debug/info 제외). 기존 `console.*` 사용처는 아직 미전환
 - **`staff-auth-config.ts`**: 서버 전용. Client Component에서 import 금지
@@ -132,6 +132,8 @@ e2e/                   E2E 테스트 (Playwright) — helpers, fixtures, tests/{
 - Meta 픽셀↔CAPI 중복 제거용 id: **PageView**는 클라이언트가 `crypto.randomUUID()`로 생성해 픽셀 발사 + `/api/meta/pageview`로 전달 (랜딩 HTML이 CDN 캐시되므로 서버 주입 시 전 방문자가 같은 id를 공유하게 됨). **Lead**는 서버(`/api/consult`·`/api/webhook/lead`)가 생성해 응답으로 내려준 eventId를 픽셀이 재사용
 - `/landing/[slug]`는 `s-maxage=60, stale-while-revalidate` CDN 캐싱. 쿠키를 쓰는 서버 클라이언트 대신 쿠키 비의존 anon 클라이언트(`@supabase/supabase-js`)를 써야 캐싱이 유지됨 (RLS `landing_public_read`). 광고 클릭은 매번 다른 `fbclid`가 붙어 CDN이 항상 MISS이므로, 랜딩 조회는 함수 인스턴스 메모리 캐시(slug 단위 60초)로 DB 왕복을 없앤다(`unstable_cache`는 운영에서 효과 없었음). 응답 헤더 `Server-Timing: landing;desc=mem-hit|mem-miss`로 확인. 어드민 수정은 최대 ~2분 후 반영
 - 랜딩 리드의 유입 구분: 게이트웨이가 업로드된 HTML에 스크립트(`__LP_DATA__`)를 주입하고, 이 스크립트가 `/api/webhook/lead` 요청 body의 `landing_page_id`를 slug로 덮어씀 → `consultations.source`에 slug 기록 (기본 상담폼은 `homepage`). 업로드 HTML 자체는 slug를 몰라도 됨
+- 업로드 랜딩 HTML 규약: 입력 검증은 `alert()` 대신 칸 아래 인라인 오류로 표시하고, 실패 시 `window.__lpFormError(field)`를 호출한다(field는 홈 상담 폼과 같은 `name`·`phone`·`grade`·`privacy` — 입력값은 보내지 않음). CTA 클릭 후 입력 칸에 자동 `focus()` 하지 않는다(휴대폰 키보드가 안내를 가림). 게이트웨이의 `lead_form_start`는 첫 입력·선택(isTrusted) 기준이라 포커스만으로는 세지 않는다
+- 광고·외부 링크는 `https://studycore.kr/...`(www 없음)로 건다. `www.studycore.kr`은 308 리다이렉트를 한 번 더 거친다
 
 ### 인증
 - 재원생: 카카오 OAuth → `/auth/callback` → `/register`
