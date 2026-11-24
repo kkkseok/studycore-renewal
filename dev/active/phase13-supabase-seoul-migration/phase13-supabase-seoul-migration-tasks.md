@@ -22,10 +22,11 @@
 - [x] 기존 프로젝트 Auth 설정 기록 (2026-11-23, context 표)
 - [x] 기존 `storage.buckets` 설정 기록 (2026-11-23, context 표)
 - [x] Docker 없는 Edge Function 배포 방법 확인 — `functions deploy --use-api` (2026-11-23)
-- [ ] 기존 Edge Function 4개의 JWT 검증 설정 확인
+- [x] 기존 Edge Function 4개의 JWT 검증 설정 확인 — 4개 모두 `verify_jwt=true` (2026-11-23 배포 때 대조)
 - [ ] Kakao provider의 동의 항목 등 내부 옵션 확인 (비밀값 제외), Refresh token 재사용 간격·이메일 템플릿 변경 여부 확인
 - [x] 기존 프로젝트 Nano → Micro 상향 (2026-11-23 00:26 KST경, +$0.00/월). 재시작 후 RAM 904MB, Swap 104MB(11%), Memory commitment 1.15GB / 1.88GB, `shared_buffers` 256MB
-- [ ] 상향 다음 날 Swap·Disk IO balance 재확인
+- [x] 상향 다음 날 Swap 재확인 (2026-11-24 14:48 KST, 가동 38시간, metrics 엔드포인트 3분 간격 2회 측정): Swap 사용 235MB / 1GB(22%, 상향 직후 104MB보다 늘었으나 Nano 때 485MB의 절반), MemAvailable 568MB / 948MB. 3분 동안 swap-out 0페이지·swap-in 67페이지(약 270KB) → 스왑에 내려간 페이지는 쓰이지 않는 것이고 현재 스왑 활동은 사실상 없음
+- [ ] Disk IO balance 재확인 — metrics 엔드포인트에 없는 값이라 대시보드(Observability → Database)에서 확인 필요
 - [ ] 👤 `C:\Users\assag\.studycore-migration\db.env`에 기존·새 프로젝트의 Session pooler 연결 문자열 입력 (기존 DB 비밀번호를 모르면 Database 설정에서 재설정)
 
 ## 2. 새 프로젝트 생성
@@ -118,6 +119,7 @@
 | 2026-11-23 | 준비 단계: 요금·Auth 설정·버킷 설정 기록, 공식 문서 확인, Postgres 17 클라이언트 설치 |
 | 2026-11-23 | 기존 프로젝트 Nano → Micro 상향 (00:26 KST경) |
 | 2026-11-23 | 새 프로젝트 생성, 리허설 이전(DB·Storage·주소 치환·크론·Auth URL) 및 로컬 검증 완료. 남은 것: Kakao provider, Edge Function 배포·시크릿 (사용자 입력 필요) |
+| 2026-11-24 | Micro 상향 후 스왑 재확인(활동 없음). 운영 페이지 200, 기존 DB 상담 34건(리허설 후 3건 유입 → 최종 덤프에서 이전됨). Supabase CLI 토큰이 권한을 잃어(프로젝트 목록 0개, 시크릿 조회 403) 사용자가 별도 터미널에서 재로그인. 시크릿 대조 결과 새 프로젝트에는 알림 시크릿 5개가 아직 0개 등록 (기본 `SUPABASE_*`만 있음) |
 
 - 새 프로젝트 ref: `jgcaxbbajqmqhmhywiqc` (2026-11-23 생성)
 - 본 전환 일시: (확정 후 기록)
