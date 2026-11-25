@@ -23,18 +23,21 @@
 - [x] 기존 `storage.buckets` 설정 기록 (2026-11-23, context 표)
 - [x] Docker 없는 Edge Function 배포 방법 확인 — `functions deploy --use-api` (2026-11-23)
 - [x] 기존 Edge Function 4개의 JWT 검증 설정 확인 — 4개 모두 `verify_jwt=true` (2026-11-23 배포 때 대조)
-- [ ] Kakao provider의 동의 항목 등 내부 옵션 확인 (비밀값 제외), Refresh token 재사용 간격·이메일 템플릿 변경 여부 확인
+- [x] Kakao provider의 동의 항목 등 내부 옵션 확인 (비밀값 제외), Refresh token 재사용 간격·이메일 템플릿 변경 여부 확인 — 2026-11-25 정리
+  - Kakao: `client_id` 해시·scope 일치(3번 항목), 새 프로젝트로 로그인 성공(4번 항목)
+  - `supabase config pull`로 두 프로젝트 설정을 저장소 밖 임시 폴더에 받아 비교: 기본값과 다른 항목 14개(Site URL·Redirect URL, 이메일 확인·발송 간격·OTP 길이, MFA TOTP, pooler 크기, Storage 옵션)가 두 프로젝트에서 같음(diff 0). 나머지 항목은 둘 다 기본값으로 판단. 비교 후 임시 파일 삭제
+  - 이메일 템플릿은 pull 대상이 아니어서 대조 못 함. 스태프 계정은 `@studycore.internal` 가상 이메일이라 메일이 실제로 나가지 않으므로 영향 없음
 - [x] 기존 프로젝트 Nano → Micro 상향 (2026-11-23 00:26 KST경, +$0.00/월). 재시작 후 RAM 904MB, Swap 104MB(11%), Memory commitment 1.15GB / 1.88GB, `shared_buffers` 256MB
 - [x] 상향 다음 날 Swap 재확인 (2026-11-24 14:48 KST, 가동 38시간, metrics 엔드포인트 3분 간격 2회 측정): Swap 사용 235MB / 1GB(22%, 상향 직후 104MB보다 늘었으나 Nano 때 485MB의 절반), MemAvailable 568MB / 948MB. 3분 동안 swap-out 0페이지·swap-in 67페이지(약 270KB) → 스왑에 내려간 페이지는 쓰이지 않는 것이고 현재 스왑 활동은 사실상 없음
 - [ ] Disk IO balance 재확인 — metrics 엔드포인트에 없는 값이라 대시보드(Observability → Database)에서 확인 필요
-- [ ] 👤 `C:\Users\assag\.studycore-migration\db.env`에 기존·새 프로젝트의 Session pooler 연결 문자열 입력 (기존 DB 비밀번호를 모르면 Database 설정에서 재설정)
+- [x] 👤 `C:\Users\assag\.studycore-migration\db.env`에 기존·새 프로젝트의 Session pooler 연결 문자열 입력 (기존 DB 비밀번호를 모르면 Database 설정에서 재설정) — `db.env` 대신 같은 폴더의 `secrets.env`(DB 비밀번호 2개 + 새 프로젝트 키)로 대체, 3번 덤프·복원에 사용
 
 ## 2. 새 프로젝트 생성
 
-- [ ] 👤 `kkkseok` 조직에 서울(`ap-northeast-2`) 프로젝트 `studycore-renewal-seoul` 생성 — 생성 화면에 이름·리전·Micro·"Grant API access to new tables automatically"(기존 프로젝트 동작과 맞춤)까지 입력해 둠. DB 비밀번호 입력과 Create 클릭은 사용자가 직접 (2026-11-23 대기 중)
-- [ ] `pg_cron` 확장 활성화 후 복원 뒤 `054_add_cleanup_crons.sql` 적용 (결정: 켠다)
-- [ ] 새 프로젝트 ref 기록 (이 문서 하단 "실행 기록")
-- [ ] 필요한 확장 활성화 확인 (`uuid-ossp`, `pgcrypto`, `pg_stat_statements`)
+- [x] 👤 `kkkseok` 조직에 서울(`ap-northeast-2`) 프로젝트 `studycore-renewal-seoul` 생성 — 생성 화면에 이름·리전·Micro·"Grant API access to new tables automatically"(기존 프로젝트 동작과 맞춤)까지 입력해 둠. DB 비밀번호 입력과 Create 클릭은 사용자가 직접 — 2026-11-23 생성
+- [x] `pg_cron` 확장 활성화 후 복원 뒤 `054_add_cleanup_crons.sql` 적용 (결정: 켠다) — 3번에서 완료(크론 2개 등록)
+- [x] 새 프로젝트 ref 기록 (이 문서 하단 "실행 기록") — `jgcaxbbajqmqhmhywiqc`
+- [x] 필요한 확장 활성화 확인 (`uuid-ossp`, `pgcrypto`, `pg_stat_statements`) — 2026-11-25 `pg_extension` 대조: 세 확장 버전 동일(1.1·1.3·1.11). 새 프로젝트에 `pg_cron` 1.6.4 추가(의도), `supabase_vault`만 0.3.1→0.3.2(플랫폼 기본 버전 차이)
 
 ## 3. 리허설 이전 (운영 영향 없음)
 
