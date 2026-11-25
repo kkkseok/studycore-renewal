@@ -180,11 +180,12 @@ e2e/                   E2E 테스트 (Playwright) — helpers, fixtures, tests/{
 ### 알림 흐름 (모두 Edge Function 경유)
 클라이언트는 식별자(questionId/noticeId)만 `/api/notify`에 전송 → 서버가 권한 검사·수신자·본문을 DB로 재계산 후 Edge Function 호출 (상담 신청만 `/api/consult` 경유). 클라이언트에서 메시지 본문·수신자 직접 전송 금지.
 ```
-상담 신청 → /api/consult → notify-consult     → 관리자 알림톡 (신청자에게는 발송 없음)
+상담 신청 → /api/consult · /api/webhook/lead → notify-consult → 관리자 알림톡 + (광고 랜딩 리드만) 신청자 안내 LMS
 재원생 질문 → /api/notify → notify-question   → 멘토 알림톡
 멘토 답변 → /api/notify → notify-answer       → 재원생 알림톡 (active만)
 공지 발행 → /api/notify → send-kakao-alimtalk → 재원생/학부모
 ```
+- 신청자 안내 LMS: `consultations.source`가 `supabase/functions/_shared/lead-guides.ts`의 키(랜딩 slug)일 때만 발송. 같은 번호·같은 안내는 30일 안에 재발송하지 않음(`notification_logs.metadata.guide`). 본문은 LMS 한도 2,000바이트(한글 2바이트) 이하. 문구를 바꾸면 Edge Function을 다시 배포해야 반영된다
 - 알림톡이 실패하면 `_shared/alimtalk.ts`가 같은 수신자에게 SMS로 한 번 더 보낸다. Solapi는 인증 서명(salt·signature) 재사용을 `DuplicatedSignature`로 거부하므로 Solapi 요청마다 `getAuthHeaders()`를 새로 호출한다
 - Solapi v3 API 키는 허용 IP 지정이 필수(`0.0.0.0/0` 불가). Edge Function은 고정 IP가 없어 키의 허용 IP를 "클라우드 공급사 → AWS 서울(ap-northeast-2)"로 둔다. 발송 로그(`notification_logs`)에 `[403] 허용되지 않은 IP`가 보이면 이 설정이나 함수 실행 지역을 확인
 

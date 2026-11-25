@@ -74,7 +74,7 @@ export async function submitConsultation(
 }
 
 /**
- * 상담 신청 알림 발송 (notify-consult Edge Function — 관리자 알림톡 + 신청자 SMS)
+ * 상담 신청 알림 발송 (notify-consult Edge Function — 관리자 알림톡 + 광고 랜딩 신청자 안내 LMS)
  *
  * DB 저장과 분리해 별도 호출 가능. 알림은 사용자 응답을 막을 필요가 없으므로
  * Route Handler에서 `after()`로 응답 후 백그라운드 실행하는 것을 권장한다.
@@ -104,6 +104,8 @@ export async function notifyConsultationCreated(
             .join(" ") || null,
         consultType: consultation.consult_type,
         message: consultation.message,
+        // 광고 랜딩 slug면 Edge Function이 신청자에게 안내 LMS를 보낸다 (_shared/lead-guides.ts)
+        source: consultation.source,
       }),
     });
 

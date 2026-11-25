@@ -11,6 +11,8 @@
 interface SendSMSOptions {
   to: string;
   message: string;
+  /** LMS 제목 (40바이트 이하). 본문이 90바이트를 넘으면 Solapi가 LMS로 보낸다 */
+  subject?: string;
 }
 
 interface SMSResponse {
@@ -104,6 +106,7 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResponse> {
           to: normalizedTo,
           from: normalizePhone(senderPhone),
           text: options.message,
+          ...(options.subject ? { subject: options.subject } : {}),
         },
       }),
     });
@@ -113,7 +116,8 @@ export async function sendSMS(options: SendSMSOptions): Promise<SMSResponse> {
       console.error("SMS 발송 실패:", errorData);
       return {
         success: false,
-        error: errorData.message || "SMS 발송에 실패했습니다.",
+        // Solapi 오류 본문은 errorCode·errorMessage 형식
+        error: `[${response.status}] ${errorData.errorMessage || errorData.message || JSON.stringify(errorData)}`,
       };
     }
 

@@ -51,6 +51,34 @@ export async function logNotification(entry: NotificationLogEntry): Promise<void
 }
 
 /**
+ * 같은 번호에 같은 안내(metadata.guide)를 최근 N일 안에 보낸 적이 있는지 확인
+ *
+ * recipientPhone은 숫자만 남긴 값으로 저장·조회한다.
+ * 조회 실패는 throw — 호출측이 실패를 기록하고 발송 여부를 정한다.
+ */
+export async function hasRecentGuideSent(
+  recipientPhone: string,
+  guideKey: string,
+  days: number
+): Promise<boolean> {
+  const supabase = getSupabaseAdmin();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  const { count, error } = await supabase
+    .from("notification_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("recipient_phone", recipientPhone)
+    .eq("status", "sent")
+    .eq("metadata->>guide", guideKey)
+    .gte("created_at", since);
+
+  if (error) {
+    throw new Error(`안내 발송 이력 조회 실패: ${error.message}`);
+  }
+  return (count ?? 0) > 0;
+}
+
+/**
  * 배치 알림 로그 저장
  */
 export async function logNotificationsBatch(

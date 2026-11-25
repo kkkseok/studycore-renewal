@@ -2,14 +2,21 @@
  * 상담 신청 알림 Edge Function
  *
  * 트리거: 상담 신청 폼 제출
- * 발송 대상: 관리자 (알림톡 → SMS fallback)
+ * 발송 대상:
+ *   1. 관리자 (알림톡 → SMS fallback)
+ *   2. 신청자 — source가 `_shared/lead-guides.ts`에 있는 광고 랜딩일 때만 안내 LMS
+ *      (같은 번호는 LEAD_GUIDE_DEDUPE_DAYS 안에 다시 보내지 않음)
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { sendSMS } from "../_shared/sms.ts";
 import { sendAlimtalk, ALIMTALK_TEMPLATES } from "../_shared/alimtalk.ts";
 import { corsHeaders, handleCors } from "../_shared/cors.ts";
-import { logNotification } from "../_shared/notification-logger.ts";
+import {
+  hasRecentGuideSent,
+  logNotification,
+} from "../_shared/notification-logger.ts";
+import { LEAD_GUIDES, LEAD_GUIDE_DEDUPE_DAYS } from "../_shared/lead-guides.ts";
 
 interface ConsultNotifyRequest {
   name: string;
@@ -17,7 +24,11 @@ interface ConsultNotifyRequest {
   school?: string;
   consultType?: string;
   message?: string;
+  /** consultations.source (랜딩 slug 또는 homepage) */
+  source?: string;
 }
+
+type ApplicantGuideResult = "none" | "sent" | "skipped_duplicate" | "failed";
 
 const CONSULT_TYPE_LABELS: Record<string, string> = {
   admission: "등록 상담",
@@ -48,6 +59,7 @@ serve(async (req: Request) => {
     const adminPhone = Deno.env.get("ADMIN_PHONE");
     const results = {
       adminNotified: false,
+      applicantGuide: "none" as ApplicantGuideResult,
       errors: [] as string[],
     };
 
@@ -99,6 +111,61 @@ serve(async (req: Request) => {
 
       if (!result.success) {
         results.errors.push(`관리자 알림 실패: ${result.error || "알 수 없는 오류"}`);
+      }
+    }
+
+    // 2. 광고 랜딩 신청자에게 안내 LMS
+    // source는 랜딩 요청 값이라 hasOwn으로만 조회 ("constructor" 같은 프로토타입 키 차단)
+    const guide =
+      body.source && Object.hasOwn(LEAD_GUIDES, body.source)
+        ? LEAD_GUIDES[body.source]
+        : undefined;
+    if (guide) {
+      const applicantPhone = body.phone.replace(/[^0-9]/g, "");
+
+      // 중복 확인 실패 시에도 안내는 보낸다(누락보다 중복이 덜 해로움). 실패 사유는 로그에 남긴다.
+      let dedupeError: string | undefined;
+      let alreadySent = false;
+      try {
+        alreadySent = await hasRecentGuideSent(
+          applicantPhone,
+          guide.key,
+          LEAD_GUIDE_DEDUPE_DAYS
+        );
+      } catch (error) {
+        dedupeError = error instanceof Error ? error.message : String(error);
+        console.error("안내 중복 확인 실패:", dedupeError);
+      }
+
+      if (alreadySent) {
+        results.applicantGuide = "skipped_duplicate";
+      } else {
+        const smsResult = await sendSMS({
+          to: applicantPhone,
+          subject: guide.subject,
+          message: guide.text,
+        });
+        results.applicantGuide = smsResult.success ? "sent" : "failed";
+
+        await logNotification({
+          type: "sms",
+          recipient_phone: applicantPhone,
+          recipient_name: body.name,
+          message: guide.text,
+          status: smsResult.success ? "sent" : "failed",
+          error_message: smsResult.success ? undefined : smsResult.error,
+          metadata: {
+            trigger: "consult_guide",
+            guide: guide.key,
+            source: body.source,
+            messageId: smsResult.messageId,
+            dedupeError,
+          },
+        });
+
+        if (!smsResult.success) {
+          results.errors.push(`신청자 안내 실패: ${smsResult.error || "알 수 없는 오류"}`);
+        }
       }
     }
 
