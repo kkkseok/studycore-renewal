@@ -179,9 +179,15 @@ export async function sendAlimtalk(
         text: options.fallbackMessage,
       };
 
+      // Solapi는 같은 salt·signature의 재사용을 거부(DuplicatedSignature)하므로 요청마다 새로 서명
+      const smsHeaders = await getAuthHeaders();
+      if (!smsHeaders) {
+        throw new Error("SMS API 환경변수가 설정되지 않았습니다.");
+      }
+
       const smsResponse = await fetch("https://api.solapi.com/messages/v4/send", {
         method: "POST",
-        headers,
+        headers: smsHeaders,
         body: JSON.stringify({ message: smsMessage }),
       });
 

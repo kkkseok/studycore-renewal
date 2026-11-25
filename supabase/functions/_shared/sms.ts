@@ -140,9 +140,10 @@ export async function sendBulkSMS(
   recipients: { phone: string; message: string }[]
 ): Promise<BatchSMSResult> {
   const senderPhone = Deno.env.get("SMS_SENDER_PHONE");
-  const headers = await getAuthHeaders();
+  // 설정 확인용. 실제 요청 헤더는 요청마다 새로 만든다(아래 루프)
+  const configured = await getAuthHeaders();
 
-  if (!headers || !senderPhone) {
+  if (!configured || !senderPhone) {
     return {
       success: 0,
       failed: recipients.length,
@@ -182,11 +183,17 @@ export async function sendBulkSMS(
           text: message,
         }));
 
+        // Solapi는 같은 salt·signature의 재사용을 거부(DuplicatedSignature)하므로 요청마다 새로 서명
+        const requestHeaders = await getAuthHeaders();
+        if (!requestHeaders) {
+          throw new Error("SMS API 환경변수가 설정되지 않았습니다.");
+        }
+
         const response = await fetch(
           "https://api.solapi.com/messages/v4/send-many",
           {
             method: "POST",
-            headers,
+            headers: requestHeaders,
             body: JSON.stringify({ messages }),
           }
         );

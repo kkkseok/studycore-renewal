@@ -4,6 +4,7 @@ CLAUDE.md에서 분리한 기능·규칙 변경 이력. 최신 항목이 위.
 여기서 도출된 지속 규칙은 CLAUDE.md 본문(코딩 규칙)에 반영한다.
 
 <!-- 형식: YYYY-MM-DD: 변경 내용 (사유) -->
+- 2026-11-25: Solapi 요청마다 인증 서명을 새로 생성 — 알림톡 실패 후 SMS 대체 발송(`_shared/alimtalk.ts`)과 대량 SMS 배치(`_shared/sms.ts`). 서울 새 프로젝트에만 배포 (1차 요청 헤더 재사용으로 대체 발송이 항상 `DuplicatedSignature`로 실패 → 알림톡이 막히면 관리자가 알림을 하나도 못 받았음. 서울 이전 리허설의 테스트 상담에서 발견)
 - 2026-11-19: 랜딩 캐시를 `unstable_cache` → 함수 인스턴스 메모리(60초)로 교체, `Server-Timing` 헤더로 적중 여부 표시 (`unstable_cache` 배포 후에도 운영 응답이 1.6초로 그대로 — DB 1회 1.24초, DB 없는 함수 0.27초 실측)
 - 2026-11-19: 랜딩 서빙 속도 — `/landing/[slug]`가 HTML을 `unstable_cache`(slug 단위 60초)로 조회, DB 오류는 캐시하지 않고 503. `getLandingForServe`는 오류를 삼키지 않고 throw (광고 클릭마다 fbclid로 CDN MISS가 나 광고 방문자만 응답 1.6~3초 → 클릭 대비 랜딩 조회 43~50% 광고 발생)
 - 2026-11-19: 광고 랜딩 폼 개선 — 게이트웨이 `lead_form_start`를 첫 포커스가 아니라 첫 입력·선택(isTrusted) 기준으로 변경, 업로드 HTML용 검증 실패 훅 `window.__lpFormError(field)` 추가(`lead_form_fail` reason=validation). 윈터 랜딩: CTA 후 자동 포커스 제거, 경고창 대신 칸별 오류 표시, 학교 칸 선택 항목으로 변경(개인정보 수집 항목 문구 수정) (CTA 클릭만으로 폼 시작이 집계돼 이탈률이 부풀려졌고, 검증 실패가 기록되지 않았음)
