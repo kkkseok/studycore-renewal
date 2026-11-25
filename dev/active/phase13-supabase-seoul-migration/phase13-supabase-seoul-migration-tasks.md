@@ -29,7 +29,9 @@
   - 이메일 템플릿은 pull 대상이 아니어서 대조 못 함. 스태프 계정은 `@studycore.internal` 가상 이메일이라 메일이 실제로 나가지 않으므로 영향 없음
 - [x] 기존 프로젝트 Nano → Micro 상향 (2026-11-23 00:26 KST경, +$0.00/월). 재시작 후 RAM 904MB, Swap 104MB(11%), Memory commitment 1.15GB / 1.88GB, `shared_buffers` 256MB
 - [x] 상향 다음 날 Swap 재확인 (2026-11-24 14:48 KST, 가동 38시간, metrics 엔드포인트 3분 간격 2회 측정): Swap 사용 235MB / 1GB(22%, 상향 직후 104MB보다 늘었으나 Nano 때 485MB의 절반), MemAvailable 568MB / 948MB. 3분 동안 swap-out 0페이지·swap-in 67페이지(약 270KB) → 스왑에 내려간 페이지는 쓰이지 않는 것이고 현재 스왑 활동은 사실상 없음
-- [ ] Disk IO balance 재확인 — metrics 엔드포인트에 없는 값이라 대시보드(Observability → Database)에서 확인 필요
+- [x] Disk IO balance 재확인 — metrics 엔드포인트에 없는 값이라 대시보드(Observability → Database)에서 확인 필요
+  - 2026-11-25 13:13 KST 기존 프로젝트 최근 7일 화면(사용자 스크린샷). 이 화면에 IO budget 차트는 없어 IOPS·throughput을 한도와 비교: IOPS 7일 내내 1 미만 / 3,000, Disk throughput 최대 수십 KB/s / 125 MB/s(0.0%). 상향(11/23 00:26) 이후 Swap 선이 약 500MB → 약 200MB대로 내려가고 Total RAM 1.06GB로 늘어남, CPU IOwait의 작은 튐도 상향 후 사라짐
+  - Memory commitment 차트에 `SEVERE` 배지: 상향 전에는 committed가 당시 한도선을 넘어 있었고, 상향 후 1.27GB / 1.88GB. 최근 24시간 화면(13:15 KST)에서는 배지 없음, committed 1.27GB로 평탄 → 배지는 7일 범위에 포함된 상향 전 구간 때문. 24시간 Swap 선 평탄, IOPS 1 미만, CPU 1.6%
 - [x] 👤 `C:\Users\assag\.studycore-migration\db.env`에 기존·새 프로젝트의 Session pooler 연결 문자열 입력 (기존 DB 비밀번호를 모르면 Database 설정에서 재설정) — `db.env` 대신 같은 폴더의 `secrets.env`(DB 비밀번호 2개 + 새 프로젝트 키)로 대체, 3번 덤프·복원에 사용
 
 ## 2. 새 프로젝트 생성
