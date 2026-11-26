@@ -97,7 +97,9 @@
 - [x] 👤 Solapi 콘솔 [API Key 관리]에서 v1 키(`NCSMYX8…`) 만료일 확인 → **무제한** (2026-11-27 사용자 확인). 만료가 없으므로 A는 임시책이 아니며, 본 전환이 문자 발송 때문에 막히지 않음. 알림톡 템플릿 검수는 전환의 선행 조건이 아님
 - [ ] 전환 일시 확정 (새벽, 약 1시간). 당일 Supabase 대시보드 상단에 장애 공지가 있으면 연기
   - 2026-11-27 결정: **12/2 이후 새벽** (정확한 날짜는 미정). 윈터 사전등록 마감(11/30)과 광고세트 AS2 전환(12/1 00:00 KST)이 지나고, AS2가 하루 이상 정상 게재된 것을 확인한 뒤 진행
-- [ ] 새 프로젝트 Edge Function 4개가 저장소 `master`와 같은지 확인 (다르면 재배포). CLI는 `secrets.env`의 `SUPABASE_ACCESS_TOKEN`으로 실행
+- [x] 새 프로젝트 Edge Function 4개가 저장소 `master`와 같은지 확인 (다르면 재배포). CLI는 `secrets.env`의 `SUPABASE_ACCESS_TOKEN`으로 실행
+  - 2026-11-27 재배포 완료(사용자 승인): `notify-answer`·`notify-question`·`send-kakao-alimtalk`을 `functions deploy --use-api --remote=<ref> --yes`로 배포 → 4개 모두 v7·ACTIVE·`verify_jwt=true`. 함수별 재다운로드 대조 차이 0(21개 파일), 무인증 POST 401·OPTIONS 200. 실발송 검증은 하지 않음(본 전환 5-4에서 확인). 전환 전에 `supabase/functions/`가 다시 바뀌면 재대조할 것
+  - CLI가 에이전트 실행에서는 호스팅 변경에 `--yes`를 요구한다(없으면 `HostedMutationConsentRequiredError`, 변경 없음)
   - 2026-11-27 대조(`master` 117ae56, 함수별로 따로 내려받아 파일 단위 diff): `notify-consult`(v7)는 저장소와 동일. `notify-answer`·`notify-question`·`send-kakao-alimtalk`(각 v6)은 번들에 든 `_shared/sms.ts`·`_shared/notification-logger.ts`가 b065f04 이전 것 — 차이는 SMS 오류 문구 형식(`[상태코드] errorMessage`), LMS `subject` 옵션, `hasRecentGuideSent()`이며 세 함수는 뒤 두 가지를 쓰지 않아 동작 차이는 실패 시 로그 문구뿐. 4개 모두 ACTIVE·`verify_jwt=true`. → 전환 전에 세 함수 재배포 필요(미실행)
   - 주의: 함수 여러 개를 같은 폴더에 내려받으면 `_shared`가 마지막 함수의 것으로 덮여 엉뚱한 차이가 보인다. 함수마다 다른 폴더에 받을 것
 - [ ] 👤 Solapi v3 키 SECRET 값을 손에 둘 것 (5-3 B 또는 A 실패 시 되돌릴 값). 없으면 v3 키 "SECRET 재생성"으로 새로 받아도 됨(v3 키의 허용 IP 설정은 유지됨 [확인필요])
