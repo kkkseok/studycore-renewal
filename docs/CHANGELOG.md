@@ -4,6 +4,7 @@ CLAUDE.md에서 분리한 기능·규칙 변경 이력. 최신 항목이 위.
 여기서 도출된 지속 규칙은 CLAUDE.md 본문(코딩 규칙)에 반영한다.
 
 <!-- 형식: YYYY-MM-DD: 변경 내용 (사유) -->
+- 2026-11-28: 광고 랜딩 신청자 안내를 알림톡 우선으로 전환 — `notify-consult`가 `lead-guides.ts`의 `alimtalk` 템플릿으로 먼저 보내고 요청 실패 시 기존 LMS로 대체. `sendAlimtalk`에 `fallbackSubject`·`omitRequestText` 옵션 추가 (템플릿 검수 통과, 안내가 문자 발송 가능 여부에 기대지 않게 함)
 - 2026-11-25: 광고 랜딩 리드에게 안내 LMS 자동 발송 — `notify-consult`가 `source`가 `_shared/lead-guides.ts`의 키(현재 `winter-2027`)일 때 신청자에게 발송, 같은 번호는 30일 안에 재발송 안 함. 서울 새 프로젝트(v7)와 운영 기존 프로젝트(v11, 13:53 KST)에 배포, 운영에서 본인 번호로 발송 확인. Solapi v3 키는 클라우드 허용 대역에서 문자 발송 불가(403) 확인 (사용자 요청: 윈터 광고 리드에게 상담·방문 안내 즉시 전송)
 - 2026-11-25: Solapi 요청마다 인증 서명을 새로 생성 — 알림톡 실패 후 SMS 대체 발송(`_shared/alimtalk.ts`)과 대량 SMS 배치(`_shared/sms.ts`). 서울 새 프로젝트에만 배포 (1차 요청 헤더 재사용으로 대체 발송이 항상 `DuplicatedSignature`로 실패 → 알림톡이 막히면 관리자가 알림을 하나도 못 받았음. 서울 이전 리허설의 테스트 상담에서 발견)
 - 2026-11-19: 랜딩 캐시를 `unstable_cache` → 함수 인스턴스 메모리(60초)로 교체, `Server-Timing` 헤더로 적중 여부 표시 (`unstable_cache` 배포 후에도 운영 응답이 1.6초로 그대로 — DB 1회 1.24초, DB 없는 함수 0.27초 실측)

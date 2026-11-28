@@ -98,6 +98,7 @@
 - [ ] 전환 일시 확정 (새벽, 약 1시간). 당일 Supabase 대시보드 상단에 장애 공지가 있으면 연기
   - 2026-11-27 결정: **12/2 이후 새벽** (정확한 날짜는 미정). 윈터 사전등록 마감(11/30)과 광고세트 AS2 전환(12/1 00:00 KST)이 지나고, AS2가 하루 이상 정상 게재된 것을 확인한 뒤 진행
 - [x] 새 프로젝트 Edge Function 4개가 저장소 `master`와 같은지 확인 (다르면 재배포). CLI는 `secrets.env`의 `SUPABASE_ACCESS_TOKEN`으로 실행
+  - 2026-11-28 `notify-consult` 재배포(사용자 승인): 랜딩 신청자 안내를 알림톡 우선(템플릿 `KA01TP261126103444400cmYl3cUxA1i`, 변수 `#{이름}`, 실패 시 LMS)으로 바꾼 뒤 기존 프로젝트 v12 → 새 프로젝트 v8 순으로 배포. 기존 프로젝트에서 테스트 신청 1건으로 알림톡 도착 확인(사용자 휴대폰). 새 프로젝트는 v8·ACTIVE·`verify_jwt=true`, 내려받아 작업본과 파일 6개 차이 0, 무인증 POST 401 — 새 프로젝트의 실발송은 미검증. 기존 프로젝트 직전 v11 백업은 `.studycore-migration\prod-notify-consult-v11\`
   - 2026-11-27 재배포 완료(사용자 승인): `notify-answer`·`notify-question`·`send-kakao-alimtalk`을 `functions deploy --use-api --remote=<ref> --yes`로 배포 → 4개 모두 v7·ACTIVE·`verify_jwt=true`. 함수별 재다운로드 대조 차이 0(21개 파일), 무인증 POST 401·OPTIONS 200. 실발송 검증은 하지 않음(본 전환 5-4에서 확인). 전환 전에 `supabase/functions/`가 다시 바뀌면 재대조할 것
   - CLI가 에이전트 실행에서는 호스팅 변경에 `--yes`를 요구한다(없으면 `HostedMutationConsentRequiredError`, 변경 없음)
   - 2026-11-27 대조(`master` 117ae56, 함수별로 따로 내려받아 파일 단위 diff): `notify-consult`(v7)는 저장소와 동일. `notify-answer`·`notify-question`·`send-kakao-alimtalk`(각 v6)은 번들에 든 `_shared/sms.ts`·`_shared/notification-logger.ts`가 b065f04 이전 것 — 차이는 SMS 오류 문구 형식(`[상태코드] errorMessage`), LMS `subject` 옵션, `hasRecentGuideSent()`이며 세 함수는 뒤 두 가지를 쓰지 않아 동작 차이는 실패 시 로그 문구뿐. 4개 모두 ACTIVE·`verify_jwt=true`. → 전환 전에 세 함수 재배포 필요(미실행)
@@ -173,6 +174,7 @@
 v1 키가 만료되면 갱신 시 공인 IP 등록이 필수가 되고, 클라우드 허용 대역으로는 문자(SMS·LMS)를 보낼 수 없다. Edge Function은 고정 IP가 없으므로 그 시점에 랜딩 안내 LMS·알림톡 실패 시 SMS 대체·어드민 단체 문자가 멈춘다. 알림톡은 영향 없음.
 
 - v1 키 만료일: **무제한** (2026-11-27 사용자가 콘솔에서 확인). 만료로 인한 중단 시점은 없음 → 아래 대책은 급하지 않고, Solapi가 v1 키 정책을 바꾸거나 키를 새로 발급해야 할 때(유출·삭제 등)를 대비한 예비 항목으로 둔다. v1 키를 삭제하거나 새 키로 바꾸면 "모든 IP 허용"을 다시 얻을 수 없으므로 삭제 금지
+- 2026-11-28: 랜딩 안내는 알림톡 우선으로 전환 완료(검수 통과). 문자가 막혀도 안내는 알림톡으로 나간다. 남는 영향은 알림톡 실패 시 LMS·SMS 대체와 어드민 단체 문자뿐
 - [ ] 대책 결정 (기한 없음 — Solapi 정책 변경 공지가 있으면 그때). 후보:
   - 고정 공인 IP가 있는 중계 서버(소형 VM 또는 고정 IP 프록시)를 두고 그 IP만 키에 등록 → Edge Function은 문자 요청을 중계 경유. 월 비용 발생 [확인필요]
   - 랜딩 안내 LMS를 알림톡 템플릿으로 전환. 광고성 문구가 많으면 검수 반려 가능성 있음 → 정보성 문구로 다듬어 검수 신청

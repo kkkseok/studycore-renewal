@@ -17,6 +17,13 @@ interface SendAlimtalkOptions {
   variables?: Record<string, string>;
   /** SMS fallback 메시지 (알림톡 실패 시 대체 발송) */
   fallbackMessage?: string;
+  /** 대체 발송이 LMS(장문)일 때의 제목 (40바이트 이하) */
+  fallbackSubject?: string;
+  /**
+   * true면 알림톡 요청에 text를 싣지 않는다 (본문은 템플릿 + variables로만 구성).
+   * 대체 문구가 템플릿 본문과 다른 글일 때 사용.
+   */
+  omitRequestText?: boolean;
 }
 
 interface AlimtalkResponse {
@@ -124,7 +131,7 @@ export async function sendAlimtalk(
     to: normalizedTo,
     from: normalizedFrom,
     type: "ATA",
-    text: options.fallbackMessage || "",
+    ...(options.omitRequestText ? {} : { text: options.fallbackMessage || "" }),
     kakaoOptions: {
       pfId,
       templateId: options.templateCode,
@@ -177,6 +184,7 @@ export async function sendAlimtalk(
         to: normalizedTo,
         from: normalizedFrom,
         text: options.fallbackMessage,
+        ...(options.fallbackSubject ? { subject: options.fallbackSubject } : {}),
       };
 
       // Solapi는 같은 salt·signature의 재사용을 거부(DuplicatedSignature)하므로 요청마다 새로 서명

@@ -1,5 +1,10 @@
 /**
- * 광고 랜딩 리드에게 보내는 안내 문자 (LMS)
+ * 광고 랜딩 리드에게 보내는 안내 (알림톡 우선, 실패 시 LMS)
+ *
+ * `alimtalk`이 있으면 알림톡으로 보내고, 알림톡 요청이 실패하면 `text`를 LMS로 보낸다.
+ * `alimtalk`이 없으면 처음부터 LMS로 보낸다.
+ * 알림톡 본문·버튼은 Solapi에 등록된 승인 템플릿이 정한다. 여기의 `logText`는 발송 기록용 사본일 뿐이라
+ * 고쳐도 실제 발송 내용은 바뀌지 않는다(바꾸려면 템플릿을 다시 검수받아야 함).
  *
  * 키는 `consultations.source`(= 랜딩 slug). 여기에 없는 source(홈페이지 상담 등)는 발송하지 않는다.
  * 같은 번호에는 DEDUPE_DAYS 안에 같은 안내를 다시 보내지 않는다(notification_logs 기준).
@@ -13,7 +18,14 @@ export interface LeadGuide {
   key: string;
   /** LMS 제목 (40바이트 이하) */
   subject: string;
+  /** LMS 본문 */
   text: string;
+  alimtalk?: {
+    /** Solapi 템플릿 ID. 템플릿 변수는 #{이름} 하나 */
+    templateCode: string;
+    /** 승인된 본문 사본 (notification_logs 기록용) */
+    logText: (name: string) => string;
+  };
 }
 
 export const LEAD_GUIDE_DEDUPE_DAYS = 30;
@@ -76,10 +88,30 @@ https://studycore.kr/notices/0490199b-9ea1-43d5-ba07-1fec05efcd8d
 
 학습관리의 첫 번째 완성형 시스템, 스터디코어1.0`;
 
+// 2026-11 검수 통과 템플릿의 본문. 버튼 4개(운영·등록 안내, 운영 캘린더, 일일 학습 시간표, 출결·학습관리 안내)는 템플릿에 등록됨
+const winter2027AlimtalkLogText = (name: string) =>
+  `${name}님, 스터디코어1.0 2027 윈터스쿨 상담 신청이 접수되었습니다.
+
+상담은 이 채팅방에서 진행합니다. 아래 내용을 적어 답장해 주시면 순서대로 안내해 드립니다.
+
+- 학생 이름:
+- 학교·학년 (2026년 기준):
+- 문의사항:
+- 희망 상담: 카카오톡 / 전화 / 방문
+- 방문 희망 시 도착 예정시간:
+
+※ 방문 상담·시설 견학은 관리자 근무시간 내 가능합니다. 이 채팅방으로 도착 예정시간을 보내고, 관리자 확인을 받은 뒤 방문해 주세요.
+
+운영 기간, 시간표, 출결·학습관리 등 자세한 안내는 아래 버튼에서 확인하실 수 있습니다.`;
+
 export const LEAD_GUIDES: Record<string, LeadGuide> = {
   "winter-2027": {
     key: "winter-2027-guide",
     subject: "[스터디코어1.0] 2027 윈터스쿨 안내",
     text: WINTER_2027_TEXT,
+    alimtalk: {
+      templateCode: "KA01TP261126103444400cmYl3cUxA1i",
+      logText: winter2027AlimtalkLogText,
+    },
   },
 };

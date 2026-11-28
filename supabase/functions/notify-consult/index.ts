@@ -4,7 +4,8 @@
  * 트리거: 상담 신청 폼 제출
  * 발송 대상:
  *   1. 관리자 (알림톡 → SMS fallback)
- *   2. 신청자 — source가 `_shared/lead-guides.ts`에 있는 광고 랜딩일 때만 안내 LMS
+ *   2. 신청자 — source가 `_shared/lead-guides.ts`에 있는 광고 랜딩일 때만 안내
+ *      (알림톡 템플릿이 있으면 알림톡 → 실패 시 LMS, 없으면 LMS)
  *      (같은 번호는 LEAD_GUIDE_DEDUPE_DAYS 안에 다시 보내지 않음)
  */
 
@@ -114,7 +115,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // 2. 광고 랜딩 신청자에게 안내 LMS
+    // 2. 광고 랜딩 신청자에게 안내 (알림톡 우선 → LMS)
     // source는 랜딩 요청 값이라 hasOwn으로만 조회 ("constructor" 같은 프로토타입 키 차단)
     const guide =
       body.source && Object.hasOwn(LEAD_GUIDES, body.source)
@@ -140,31 +141,68 @@ serve(async (req: Request) => {
       if (alreadySent) {
         results.applicantGuide = "skipped_duplicate";
       } else {
-        const smsResult = await sendSMS({
-          to: applicantPhone,
-          subject: guide.subject,
-          message: guide.text,
-        });
-        results.applicantGuide = smsResult.success ? "sent" : "failed";
+        // 알림톡 템플릿이 있으면 알림톡 → (요청 실패 시) LMS, 없으면 바로 LMS
+        let guideResult: {
+          success: boolean;
+          messageId?: string;
+          error?: string;
+          sentVia: "alimtalk" | "sms";
+          alimtalkError?: string;
+        };
+        if (guide.alimtalk) {
+          const result = await sendAlimtalk({
+            to: applicantPhone,
+            templateCode: guide.alimtalk.templateCode,
+            variables: { 이름: body.name },
+            fallbackMessage: guide.text,
+            fallbackSubject: guide.subject,
+            // LMS 본문은 템플릿과 다른 글이라 알림톡 요청에는 싣지 않는다
+            omitRequestText: true,
+          });
+          guideResult = {
+            success: result.success,
+            messageId: result.messageId,
+            error: result.error,
+            // 둘 다 실패하면 마지막 시도가 LMS
+            sentVia: result.sentVia || "sms",
+            alimtalkError: result.alimtalkError,
+          };
+        } else {
+          const smsResult = await sendSMS({
+            to: applicantPhone,
+            subject: guide.subject,
+            message: guide.text,
+          });
+          guideResult = { ...smsResult, sentVia: "sms" };
+        }
+        results.applicantGuide = guideResult.success ? "sent" : "failed";
 
+        const sentAsAlimtalk = guideResult.sentVia === "alimtalk" && guide.alimtalk;
         await logNotification({
-          type: "sms",
+          type: guideResult.sentVia,
           recipient_phone: applicantPhone,
           recipient_name: body.name,
-          message: guide.text,
-          status: smsResult.success ? "sent" : "failed",
-          error_message: smsResult.success ? undefined : smsResult.error,
+          message: sentAsAlimtalk
+            ? guide.alimtalk!.logText(body.name)
+            : guide.text,
+          template_code: sentAsAlimtalk
+            ? guide.alimtalk!.templateCode
+            : undefined,
+          status: guideResult.success ? "sent" : "failed",
+          error_message: guideResult.success ? undefined : guideResult.error,
           metadata: {
             trigger: "consult_guide",
             guide: guide.key,
             source: body.source,
-            messageId: smsResult.messageId,
+            messageId: guideResult.messageId,
+            sentVia: guideResult.sentVia,
+            alimtalkError: guideResult.alimtalkError || undefined,
             dedupeError,
           },
         });
 
-        if (!smsResult.success) {
-          results.errors.push(`신청자 안내 실패: ${smsResult.error || "알 수 없는 오류"}`);
+        if (!guideResult.success) {
+          results.errors.push(`신청자 안내 실패: ${guideResult.error || "알 수 없는 오류"}`);
         }
       }
     }
